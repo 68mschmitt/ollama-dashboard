@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama Metrics Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🦙 Ollama Metrics Dashboard</h1>
+            <div class="status-indicator">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Checking...</span>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <!-- Top Row: Running Models + Hardware Metrics -->
+            <div class="top-row">
+                <!-- Running Models Section (Condensed) -->
+                <section class="card compact-card">
+                    <h2>🔄 Running Models <span class="model-count" id="runningCountBadge">0</span></h2>
+                    <div id="runningModels" class="models-compact">
+                        <p class="loading">Loading...</p>
+                    </div>
+                </section>
+
+                <!-- Hardware Metrics Section -->
+                <section class="card hardware-section">
+                    <h2>🖥️ Hardware Metrics</h2>
+                    <div class="hardware-grid">
+                        <div class="hardware-card">
+                            <h3>CPU</h3>
+                            <div class="hardware-details">
+                                <div class="hardware-info">
+                                    <span class="hw-label">Usage:</span>
+                                    <span class="hw-value" id="cpuUsage">-</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="cpuProgress" style="width: 0%"></div>
+                                </div>
+                                <div class="hardware-info small-info">
+                                    <span class="hw-label" id="cpuModel">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="hardware-card">
+                            <h3>Memory</h3>
+                            <div class="hardware-details">
+                                <div class="hardware-info">
+                                    <span class="hw-label">Usage:</span>
+                                    <span class="hw-value" id="memUsage">-</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="memProgress" style="width: 0%"></div>
+                                </div>
+                                <div class="hardware-info small-info">
+                                    <span class="hw-label"><span id="memUsed">-</span> / <span id="memTotal">-</span></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="hardware-card" id="gpuCard">
+                            <h3>GPU</h3>
+                            <div id="gpuMetrics">
+                                <p class="loading">Loading...</p>
+                            </div>
+                        </div>
+                        
+                        <div class="hardware-card">
+                            <h3>Disk</h3>
+                            <div class="hardware-details">
+                                <div class="hardware-info">
+                                    <span class="hw-label">Usage:</span>
+                                    <span class="hw-value" id="diskUsage">-</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="diskProgress" style="width: 0%"></div>
+                                </div>
+                                <div class="hardware-info small-info">
+                                    <span class="hw-label"><span id="diskUsed">-</span> / <span id="diskTotal">-</span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Available Models Section (Collapsible) -->
+            <section class="card full-width collapsible-card">
+                <div class="card-header" onclick="toggleCollapse('availableModels')">
+                    <h2>📦 Available Models <span class="model-count" id="totalModelsBadge">0</span></h2>
+                    <span class="collapse-icon" id="availableModelsIcon">▼</span>
+                </div>
+                <div id="availableModelsContent" class="collapsible-content">
+                    <div id="availableModels" class="models-list">
+                        <p class="loading">Loading...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- System Stats Section -->
+            <section class="card full-width">
+                <h2>📊 System Statistics</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Models</div>
+                        <div class="stat-value" id="totalModels">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Models Running</div>
+                        <div class="stat-value" id="runningCount">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Last Updated</div>
+                        <div class="stat-value small" id="lastUpdated">Never</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Test Generation Section -->
+            <section class="card full-width">
+                <h2>🧪 Test Generation</h2>
+                <div class="test-section">
+                    <select id="modelSelect" class="input-select">
+                        <option value="">Select a model...</option>
+                    </select>
+                    <textarea id="promptInput" placeholder="Enter your prompt here..." rows="3"></textarea>
+                    <button id="generateBtn" class="btn-primary">Generate Response</button>
+                    <div id="generationResult" class="result-box"></div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
