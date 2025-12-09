@@ -148,7 +148,7 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Test generation endpoint (to simulate load)
+// Test generation endpoint (to simulate load) - non-streaming
 app.post('/api/generate', async (req, res) => {
   try {
     const { model, prompt } = req.body;
@@ -163,6 +163,84 @@ app.post('/api/generate', async (req, res) => {
       error: 'Failed to generate',
       message: error.message 
     });
+  }
+});
+
+// Streaming generation endpoint using Server-Sent Events (SSE)
+app.post('/api/generate/stream', async (req, res) => {
+  try {
+    const { model, prompt } = req.body;
+    
+    // Validate required parameters
+    if (!model || !prompt) {
+      return res.status(400).json({ 
+        error: 'Invalid request',
+        message: 'Both model and prompt are required' 
+      });
+    }
+
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+
+    // Make streaming request to Ollama
+    const response = await axios.post(`${OLLAMA_API}/api/generate`, {
+      model,
+      prompt,
+      stream: true
+    }, {
+      responseType: 'stream'
+    });
+
+    // Forward each chunk from Ollama to the client as SSE
+    response.data.on('data', (chunk) => {
+      try {
+        const lines = chunk.toString().split('\n').filter(line => line.trim());
+        
+        for (const line of lines) {
+          const data = JSON.parse(line);
+          
+          // Send as SSE event
+          res.write(`data: ${JSON.stringify(data)}\n\n`);
+          
+          // If this is the final chunk, close the connection
+          if (data.done) {
+            res.end();
+          }
+        }
+      } catch (parseError) {
+        console.error('Error parsing Ollama stream chunk:', parseError);
+      }
+    });
+
+    // Handle stream errors
+    response.data.on('error', (error) => {
+      console.error('Ollama stream error:', error);
+      res.write(`event: error\ndata: ${JSON.stringify({ error: error.message })}\n\n`);
+      res.end();
+    });
+
+    // Handle client disconnect
+    req.on('close', () => {
+      response.data.destroy();
+    });
+
+  } catch (error) {
+    console.error('Error in streaming generation:', error);
+    
+    // If headers not sent yet, send error as JSON
+    if (!res.headersSent) {
+      return res.status(500).json({ 
+        error: 'Failed to start streaming generation',
+        message: error.message 
+      });
+    }
+    
+    // If streaming already started, send error event and close
+    res.write(`event: error\ndata: ${JSON.stringify({ error: error.message })}\n\n`);
+    res.end();
   }
 });
 
