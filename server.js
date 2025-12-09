@@ -5,8 +5,33 @@ const path = require('path');
 const si = require('systeminformation');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const OLLAMA_API = 'http://localhost:11434';
+const PORT = process.env.PORT || 3001;
+
+/**
+ * Ollama API base URL configuration
+ * 
+ * Set via OLLAMA_URL environment variable to connect to a custom Ollama instance.
+ * Format: http(s)://hostname:port (e.g., http://192.168.1.100:11434)
+ * 
+ * Falls back to http://localhost:11434 if:
+ * - OLLAMA_URL is not set
+ * - OLLAMA_URL is an invalid URL format
+ * - OLLAMA_URL uses a protocol other than http or https
+ * 
+ * @type {string}
+ */
+let OLLAMA_API = 'http://localhost:11434';
+if (process.env.OLLAMA_URL) {
+  try {
+    const url = new URL(process.env.OLLAMA_URL);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      throw new Error(`Invalid protocol: ${url.protocol}. Only http and https are supported.`);
+    }
+    OLLAMA_API = process.env.OLLAMA_URL;
+  } catch (e) {
+    console.error(`Invalid OLLAMA_URL: ${process.env.OLLAMA_URL}. Using default: ${OLLAMA_API}`);
+  }
+}
 
 app.use(cors());
 app.use(express.json());

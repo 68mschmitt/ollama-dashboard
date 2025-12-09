@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'http://localhost:3001/api';
 let refreshInterval;
 let consecutiveErrors = 0;
 let currentBackoffDelay = 5000; // Start with 5 seconds

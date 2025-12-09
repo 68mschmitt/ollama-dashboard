@@ -73,11 +73,92 @@ http://localhost:3000
 
 ### Ollama Server URL
 
-By default, the dashboard connects to Ollama at `http://localhost:11434`. To change this, edit the `OLLAMA_API` constant in `server.js`:
+The dashboard can connect to any Ollama instance using the `OLLAMA_URL` environment variable. If not set, it defaults to `http://localhost:11434`.
 
-```javascript
-const OLLAMA_API = 'http://localhost:11434'; // Change this URL
+#### Environment Variable: OLLAMA_URL
+
+**Format**: `http(s)://hostname:port`
+
+**Examples**:
+
+```bash
+# Local development (default - no configuration needed)
+npm start
+# Connects to: http://localhost:11434
+
+# Remote Ollama instance on local network
+OLLAMA_URL=http://192.168.1.100:11434 npm start
+
+# Remote Ollama with custom port
+OLLAMA_URL=http://ollama.example.com:8080 npm start
+
+# Secure connection (HTTPS)
+OLLAMA_URL=https://ollama.example.com:11434 npm start
 ```
+
+#### Docker Deployment
+
+When running the dashboard in Docker, use environment variables to configure the Ollama connection:
+
+```bash
+# Docker run with environment variable
+docker run -p 3000:3000 \
+  -e OLLAMA_URL=http://host.docker.internal:11434 \
+  ollama-dashboard
+
+# Docker Compose
+services:
+  dashboard:
+    image: ollama-dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+```
+
+**Note**: When connecting from Docker to Ollama on the host machine, use `host.docker.internal` instead of `localhost`.
+
+#### Validation and Error Handling
+
+The dashboard validates the `OLLAMA_URL` format on startup:
+- ✅ **Valid protocols**: `http://` and `https://`
+- ❌ **Invalid protocols**: `ftp://`, `file://`, etc. will fall back to default
+- ❌ **Malformed URLs**: Invalid formats will fall back to default with error logging
+
+If an invalid URL is provided, the dashboard will:
+1. Log an error message to the console
+2. Fall back to `http://localhost:11434`
+3. Continue running normally
+
+#### Troubleshooting Connection Issues
+
+**Dashboard shows "Offline" status:**
+- Verify Ollama is running: `curl http://localhost:11434/api/tags`
+- Check the OLLAMA_URL format matches `http(s)://hostname:port`
+- Ensure no firewall is blocking the connection
+- For remote instances, verify network connectivity: `ping hostname`
+
+**"Invalid OLLAMA_URL" error in console:**
+- Check for typos in the URL
+- Ensure protocol is `http://` or `https://` (not `ftp://`, etc.)
+- Verify the URL includes port number (e.g., `:11434`)
+- Example valid format: `http://192.168.1.100:11434`
+
+**Docker container cannot connect:**
+- Use `host.docker.internal` instead of `localhost` when connecting to host
+- Ensure Ollama is bound to `0.0.0.0` not just `127.0.0.1`
+- Check Docker network configuration allows outbound connections
+- Verify Ollama container is on the same Docker network (if using Docker Compose)
+
+**Connection works locally but not remotely:**
+- Ensure Ollama is configured to accept remote connections
+- Check firewall rules on the Ollama host machine
+- Verify the Ollama instance is bound to the correct network interface
+- Test connection with: `curl http://remote-host:11434/api/tags`
 
 ### Server Port
 
@@ -85,6 +166,12 @@ By default, the dashboard runs on port 3000. To change this, set the `PORT` envi
 
 ```bash
 PORT=8080 npm start
+```
+
+You can combine both environment variables:
+
+```bash
+PORT=8080 OLLAMA_URL=http://192.168.1.100:11434 npm start
 ```
 
 ## API Endpoints

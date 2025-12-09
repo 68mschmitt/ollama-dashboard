@@ -32,10 +32,11 @@ You are the Orchestrator Agent, responsible for coordinating automated dev→tes
 /workflow <issue-id>
 ```
 
-**Without issue ID** (show smart suggestions):
+**Without issue ID** (automatically show smart suggestions):
 ```
 /workflow
 ```
+This will automatically display the Smart Suggestions Dashboard with actionable options.
 
 ## Arguments
 
@@ -73,10 +74,12 @@ Complete: Close all issues
 ### Step 0: Determine Command Mode
 
 **Parse `$arguments` variable**:
-- If `$arguments` is empty or undefined: Go to Step 0a (Smart Suggestions)
+- If `$arguments` is empty or undefined: Automatically execute Step 0a (Smart Suggestions)
 - If `$arguments` contains an issue-id: Go to Step 1 (Start Workflow)
 
 **Note**: The OpenCode framework will pass user input to this command via the `$arguments` variable. Extract the first word as the issue-id (if present).
+
+**IMPORTANT**: When `$arguments` is empty, automatically execute the Smart Suggestions Dashboard (Step 0a) without requiring additional user input. The smart function should run immediately and present the dashboard to the user.
 
 ### Step 0a: Show Smart Suggestions Dashboard
 
@@ -188,8 +191,8 @@ SUGGESTED ACTIONS:
    - Actions should map to specific commands:
      - Resume workflow → `/workflow <issue-id>`
      - Start work → `/workflow <issue-id>`
-     - View details → `bd show <issue-id> --json`
-     - View all ready → `bd ready --json`
+     - View details → `beads_show({ id: "<issue-id>" })`
+     - View all ready → `beads_ready({})`
 
 6. **Wait for user selection**:
    - User responds with a number (1-5)
@@ -198,12 +201,22 @@ SUGGESTED ACTIONS:
    - If option 4-5: Run query command and return to dashboard
    - Invalid number: Show error and re-display dashboard
 
-7. **Exit after showing dashboard** (only if user doesn't select an option)
+7. **Wait for user selection and execute**:
+   - After displaying the dashboard, wait for the user to respond with a number (1-5)
+   - When user responds, execute the corresponding action immediately:
+     - Options 1-3 (start/resume workflow): Continue to Step 1 with the selected issue-id
+     - Options 4-5 (view details/list): Execute the query and display results
+   - If user provides invalid input, show error and re-display dashboard
+   - If user doesn't respond, command completes after showing dashboard
 
 ### Step 1: Check for Paused Workflows (when issue-id provided)
 
-```bash
-bd list --label orchestrator-context --status in_progress --json
+**Use MCP function**:
+```javascript
+const workflows = beads_list({
+  label: "orchestrator-context",
+  status: "in_progress"
+});
 ```
 
 **If workflows found**:
@@ -241,8 +254,9 @@ Select option (1-4):
 
 ### Step 2: Analyze Target Issue
 
-```bash
-bd show <issue-id> --json
+**Use MCP function**:
+```javascript
+const issue = beads_show({ id: "<issue-id>" });
 ```
 
 **Extract**:
@@ -272,30 +286,34 @@ bd show <issue-id> --json
 
 For each domain label found:
 
-```bash
-# Example: backend + frontend issue
+**Use MCP functions**:
+```javascript
+// Example: backend + frontend issue
 
-# 1. Create backend split
-bd create "Backend: <original-id> - <title>" \
-  --label backend \
-  --deps relates-to:<original-id> \
-  --priority <same-as-original> \
-  --description "Backend portion of <original-id>: <description>" \
-  --json
+// 1. Create backend split
+const backendIssue = beads_create({
+  title: `Backend: ${originalId} - ${title}`,
+  label: "backend",
+  deps: `relates-to:${originalId}`,
+  priority: originalPriority,
+  description: `Backend portion of ${originalId}: ${description}`
+});
 
-# 2. Create frontend split (depends on backend)
-bd create "Frontend: <original-id> - <title>" \
-  --label frontend \
-  --deps discovered-from:<backend-issue-id> \
-  --priority <same-as-original> \
-  --description "Frontend portion of <original-id>. Depends on backend API: <description>" \
-  --json
+// 2. Create frontend split (depends on backend)
+const frontendIssue = beads_create({
+  title: `Frontend: ${originalId} - ${title}`,
+  label: "frontend",
+  deps: `discovered-from:${backendIssue.id}`,
+  priority: originalPriority,
+  description: `Frontend portion of ${originalId}. Depends on backend API: ${description}`
+});
 
-# 3. Update original issue
-bd update <original-id> \
-  --notes "Split into: <backend-id>, <frontend-id>" \
-  --status in_progress \
-  --json
+// 3. Update original issue
+beads_update({
+  id: originalId,
+  notes: `Split into: ${backendIssue.id}, ${frontendIssue.id}`,
+  status: "in_progress"
+});
 ```
 
 **Processing Order**:
@@ -309,33 +327,41 @@ bd update <original-id> \
 - Track splits in original issue notes
 
 **When all splits complete**:
-```bash
-bd close <original-id> --reason "All domain implementations complete" --json
+```javascript
+beads_close({
+  id: originalId,
+  reason: "All domain implementations complete"
+});
 ```
 
 ### Step 5: Create Orchestrator Tracking Issue
 
-```bash
-bd create "Orchestrator: Workflow for <issue-id>" \
-  --label orchestrator-context \
-  --priority <same-as-original> \
-  --deps parent-child:<issue-id> \
-  --description "Tracking workflow for <issue-id>: <title>" \
-  --notes '{
-    "workflow_id": "<issue-id>",
-    "original_issue": "<issue-id>",
-    "start_time": "<ISO-timestamp>",
-    "current_phase": "dev",
-    "iteration": 1,
-    "max_iterations": 3,
-    "domain_splits": [],
-    "phases_completed": [],
-    "current_issue": "<issue-id>",
-    "handoff_chain": [],
-    "errors": [],
-    "paused": false
-  }' \
-  --json
+**Use MCP function**:
+```javascript
+const orchIssue = beads_create({
+  title: `Orchestrator: Workflow for ${issueId}`,
+  label: "orchestrator-context",
+  priority: originalPriority,
+  deps: `parent-child:${issueId}`,
+  description: `Tracking workflow for ${issueId}: ${title}`,
+  notes: JSON.stringify({
+    workflow_id: issueId,
+    original_issue: issueId,
+    start_time: new Date().toISOString(),
+    current_phase: "dev",
+    iteration: 1,
+    max_iterations: 3,
+    domain_splits: [],
+    phases_completed: [],
+    current_issue: issueId,
+    handoff_chain: [],
+    errors: [],
+    paused: false
+  })
+});
+
+// Store tracking issue ID
+const orchId = orchIssue.id;
 ```
 
 **Store tracking issue ID** for all subsequent updates.
@@ -420,7 +446,8 @@ Description:
 <paste full issue description>
 
 YOUR TASKS:
-1. Claim the issue: bd update <issue-id> --status in_progress --json
+1. Claim the issue using beads_update:
+   beads_update({ id: "<issue-id>", status: "in_progress" })
 
 2. Implement the solution following your domain best practices (see .opencode/agent/<domain>.md)
    - Read issue details carefully
@@ -428,13 +455,14 @@ YOUR TASKS:
    - Use Context7 for documentation lookups if needed
    - Test your changes manually
 
-3. Document your work in structured format:
-   bd comment <issue-id> "
-   ---
+3. Document your work using beads_comment:
+   beads_comment({
+     id: "<issue-id>",
+     comment: `---
    **Agent**: <Domain> Agent
    **Phase**: Development
    **Status**: Completed
-   **Timestamp**: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+   **Timestamp**: ${new Date().toISOString()}
    
    ### Implementation Summary
    <summary of changes>
@@ -447,29 +475,34 @@ YOUR TASKS:
    
    ### Next Steps
    Created handoff issue: <test-issue-id>
-   ---
-   " --json
+   ---`
+   })
 
-4. Create test handoff issue:
-   bd create "Test: <issue-id> - Verify <feature>" \\
-     --label testing \\
-     --deps discovered-from:<issue-id> \\
-     --priority <priority> \\
-     --description "Implementation completed. Test requirements:
-                    - Verify <feature> works as specified
-                    - Test edge cases: <list>
-                    - Test error handling: <list>
-                    - Ensure no regressions
-                    
-                    Implementation details:
-                    <paste your implementation summary>
-                    " \\
-     --json
+4. Create test handoff issue using beads_create:
+   const testIssue = beads_create({
+     title: "Test: <issue-id> - Verify <feature>",
+     label: "testing",
+     deps: "discovered-from:<issue-id>",
+     priority: <priority>,
+     description: `Implementation completed. Test requirements:
+       - Verify <feature> works as specified
+       - Test edge cases: <list>
+       - Test error handling: <list>
+       - Ensure no regressions
+       
+       Implementation details:
+       <paste your implementation summary>`
+   })
 
-5. Update orchestrator tracking:
-   bd update <orch-id> \\
-     --notes '{"current_phase": "testing", "current_issue": "<test-id>", "handoff_chain": [...]}' \\
-     --json
+5. Update orchestrator tracking using beads_update:
+   beads_update({
+     id: "<orch-id>",
+     notes: JSON.stringify({
+       current_phase: "testing",
+       current_issue: testIssue.id,
+       handoff_chain: [...]
+     })
+   })
 
 6. IMPORTANT: Output the test handoff issue ID in this exact format:
    HANDOFF_CREATED: test:<test-issue-id>
@@ -503,10 +536,11 @@ IMPLEMENTATION DETAILS:
 <Read and paste developer's implementation summary from <dev-id> comments>
 
 YOUR TASKS:
-1. Claim the test issue: bd update <test-id> --status in_progress --json
+1. Claim the test issue using beads_update:
+   beads_update({ id: "<test-id>", status: "in_progress" })
 
-2. Read developer notes from development issue:
-   bd show <dev-id> --json
+2. Read developer notes from development issue using beads_show:
+   const devIssue = beads_show({ id: "<dev-id>" })
 
 3. Run existing tests to verify no regressions:
    npm test
@@ -517,13 +551,14 @@ YOUR TASKS:
    - Error conditions
    - Integration points
 
-5. Document test coverage:
-   bd comment <test-id> "
-   ---
+5. Document test coverage using beads_comment:
+   beads_comment({
+     id: "<test-id>",
+     comment: `---
    **Agent**: Testing Agent
    **Phase**: Testing
    **Status**: Completed
-   **Timestamp**: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+   **Timestamp**: ${new Date().toISOString()}
    
    ### Tests Added
    <list of test files and cases>
@@ -536,38 +571,43 @@ YOUR TASKS:
    
    ### Next Steps
    Created review handoff: <review-id>
-   ---
-   " --json
+   ---`
+   })
 
-6. Create review handoff issue:
-   bd create "Review: <original-id> - <feature> implementation" \\
-     --label review \\
-     --deps discovered-from:<test-id> \\
-     --priority <priority> \\
-     --description "Implementation and tests complete for <original-id>.
-                    
-                    **Files Changed**: <list>
-                    **Test Coverage**: <percentage>
-                    
-                    Review checklist:
-                    - Code quality
-                    - Best practices adherence
-                    - Test coverage adequacy
-                    - Security considerations
-                    - Performance considerations
-                    
-                    Implementation Summary:
-                    <paste developer summary>
-                    
-                    Test Summary:
-                    <paste your test summary>
-                    " \\
-     --json
+6. Create review handoff issue using beads_create:
+   const reviewIssue = beads_create({
+     title: "Review: <original-id> - <feature> implementation",
+     label: "review",
+     deps: "discovered-from:<test-id>",
+     priority: <priority>,
+     description: `Implementation and tests complete for <original-id>.
+       
+       **Files Changed**: <list>
+       **Test Coverage**: <percentage>
+       
+       Review checklist:
+       - Code quality
+       - Best practices adherence
+       - Test coverage adequacy
+       - Security considerations
+       - Performance considerations
+       
+       Implementation Summary:
+       <paste developer summary>
+       
+       Test Summary:
+       <paste your test summary>`
+   })
 
-7. Update orchestrator tracking:
-   bd update <orch-id> \\
-     --notes '{"current_phase": "review", "current_issue": "<review-id>", "handoff_chain": [...]}' \\
-     --json
+7. Update orchestrator tracking using beads_update:
+   beads_update({
+     id: "<orch-id>",
+     notes: JSON.stringify({
+       current_phase: "review",
+       current_issue: reviewIssue.id,
+       handoff_chain: [...]
+     })
+   })
 
 8. IMPORTANT: Output the review handoff issue ID in this exact format:
    HANDOFF_CREATED: review:<review-issue-id>
@@ -606,7 +646,8 @@ Test Summary:
 <Read and paste test summary from <test-id> comments>
 
 YOUR TASKS:
-1. Claim the review issue: bd update <review-id> --status in_progress --json
+1. Claim the review issue using beads_update:
+   beads_update({ id: "<review-id>", status: "in_progress" })
 
 2. Review code changes:
    - Use git diff if needed to see changes
@@ -633,13 +674,14 @@ YOUR TASKS:
    **APPROVE**: If ALL criteria pass
    **REQUEST CHANGES**: If ANY criteria needs work
 
-6. Document review:
-   bd comment <review-id> "
-   ---
+6. Document review using beads_comment:
+   beads_comment({
+     id: "<review-id>",
+     comment: `---
    **Agent**: Reviewer Agent
    **Phase**: Review
    **Status**: <Approved|Changes Requested>
-   **Timestamp**: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+   **Timestamp**: ${new Date().toISOString()}
    
    ### Code Quality: <✓ Pass|✗ Needs Work>
    <specific feedback>
@@ -663,8 +705,8 @@ YOUR TASKS:
    1. <specific fix with file:line reference>
    2. <specific fix with file:line reference>
    </if>
-   ---
-   " --json
+   ---`
+   })
 
 7. IMPORTANT: Output your decision in this exact format:
    REVIEW_DECISION: APPROVED
@@ -686,13 +728,17 @@ Begin review now. Follow your workflow defined in .opencode/agent/reviewer.md.
 
 **If reviewer approves**:
 
-```bash
-# Close all issues in reverse order
-bd close <review-id> --reason "Review approved" --json
-bd close <test-id> --reason "Tests validated" --json
-bd close <dev-id> --reason "Implementation approved" --json  # If separate
-bd close <original-id> --reason "Implementation complete and approved after <n> iterations" --json
-bd close <orch-id> --reason "Workflow completed successfully" --json
+**Use MCP functions**:
+```javascript
+// Close all issues in reverse order
+beads_close({ id: reviewId, reason: "Review approved" });
+beads_close({ id: testId, reason: "Tests validated" });
+beads_close({ id: devId, reason: "Implementation approved" }); // If separate
+beads_close({ 
+  id: originalId, 
+  reason: "Implementation complete and approved after 1 iterations" 
+});
+beads_close({ id: orchId, reason: "Workflow completed successfully" });
 ```
 
 **Display completion summary**:
@@ -738,37 +784,41 @@ if (current_iteration >= 3) {
 
 **Create fix handoff**:
 
-```bash
-bd create "Fix: <original-id> - Address review comments (iteration <n>)" \
-  --label <original-domain> \
-  --deps discovered-from:<review-id> \
-  --priority <same-as-original> \
-  --description "Review iteration <n> of 3 for <original-id>.
-                 
-                 **Review Feedback**:
-                 <paste specific feedback from reviewer>
-                 
-                 **Action Required**:
-                 Address all feedback points and update implementation.
-                 
-                 **Reference**:
-                 - Original issue: <original-id>
-                 - Review issue: <review-id>
-                 - Previous iteration notes: See comments on <original-id>" \
-  --json
+**Use MCP function**:
+```javascript
+const fixIssue = beads_create({
+  title: `Fix: ${originalId} - Address review comments (iteration ${iteration})`,
+  label: originalDomain,
+  deps: `discovered-from:${reviewId}`,
+  priority: originalPriority,
+  description: `Review iteration ${iteration} of 3 for ${originalId}.
+    
+    **Review Feedback**:
+    <paste specific feedback from reviewer>
+    
+    **Action Required**:
+    Address all feedback points and update implementation.
+    
+    **Reference**:
+    - Original issue: ${originalId}
+    - Review issue: ${reviewId}
+    - Previous iteration notes: See comments on ${originalId}`
+});
 ```
 
 **Update orchestrator tracking**:
 
-```bash
-bd update <orch-id> \
-  --notes '{
-    "current_phase": "dev",
-    "iteration": <n+1>,
-    "current_issue": "<fix-id>",
-    "handoff_chain": [..., {"from": "<review-id>", "to": "<fix-id>", "phase": "fix"}]
-  }' \
-  --json
+**Use MCP function**:
+```javascript
+beads_update({
+  id: orchId,
+  notes: JSON.stringify({
+    current_phase: "dev",
+    iteration: iteration + 1,
+    current_issue: fixIssue.id,
+    handoff_chain: [..., { from: reviewId, to: fixIssue.id, phase: "fix" }]
+  })
+});
 ```
 
 **Route back to Step 7** (developer agent) with fix handoff issue.
@@ -777,45 +827,52 @@ bd update <orch-id> \
 
 **If iteration >= 3 after review requests changes**:
 
-```bash
-# 1. Create escalation issue
-bd create "Escalation: <original-id> needs human review" \
-  --label blocked,needs-human \
-  --priority 0 \
-  --deps discovered-from:<review-id> \
-  --description "Workflow for <original-id> exceeded maximum iterations (3).
-                 
-                 **History**:
-                 - Iteration 1: <summary of feedback>
-                 - Iteration 2: <summary of feedback>
-                 - Iteration 3: <summary of feedback>
-                 
-                 **Current State**:
-                 Implementation has been revised 3 times but still does not meet review criteria.
-                 
-                 **Outstanding Issues**:
-                 <paste unresolved feedback from latest review>
-                 
-                 **Recommendation**:
-                 Human developer should:
-                 1. Review implementation and all feedback
-                 2. Determine if requirements need clarification
-                 3. Implement final fixes manually
-                 4. Update this issue with resolution
-                 
-                 **Reference**:
-                 - Original issue: <original-id>
-                 - Latest review: <review-id>
-                 - Orchestrator tracking: <orch-id>" \
-  --json
+**Use MCP functions**:
+```javascript
+// 1. Create escalation issue
+const escalationIssue = beads_create({
+  title: `Escalation: ${originalId} needs human review`,
+  label: "blocked,needs-human",
+  priority: 0,
+  deps: `discovered-from:${reviewId}`,
+  description: `Workflow for ${originalId} exceeded maximum iterations (3).
+    
+    **History**:
+    - Iteration 1: <summary of feedback>
+    - Iteration 2: <summary of feedback>
+    - Iteration 3: <summary of feedback>
+    
+    **Current State**:
+    Implementation has been revised 3 times but still does not meet review criteria.
+    
+    **Outstanding Issues**:
+    <paste unresolved feedback from latest review>
+    
+    **Recommendation**:
+    Human developer should:
+    1. Review implementation and all feedback
+    2. Determine if requirements need clarification
+    3. Implement final fixes manually
+    4. Update this issue with resolution
+    
+    **Reference**:
+    - Original issue: ${originalId}
+    - Latest review: ${reviewId}
+    - Orchestrator tracking: ${orchId}`
+});
 
-# 2. Block original issue
-bd update <original-id> --status blocked --json
+// 2. Block original issue
+beads_update({ id: originalId, status: "blocked" });
 
-# 3. Pause workflow
-bd update <orch-id> \
-  --notes '{"paused": true, "reason": "max_iterations", "escalation": "<escalation-id>"}' \
-  --json
+// 3. Pause workflow
+beads_update({
+  id: orchId,
+  notes: JSON.stringify({
+    paused: true,
+    reason: "max_iterations",
+    escalation: escalationIssue.id
+  })
+});
 ```
 
 **Display escalation message**:
@@ -849,46 +906,56 @@ To resume after manual fixes:
 
 **If agent reports error or fails**:
 
-```bash
-# 1. Document error in current issue
-bd comment <current-issue-id> "ERROR: <error-details>" --json
+**Use MCP functions**:
+```javascript
+// 1. Document error in current issue
+beads_comment({
+  id: currentIssueId,
+  comment: `ERROR: ${errorDetails}`
+});
 
-# 2. Create blocker issue
-bd create "Blocker: <agent-type> failed on <issue-id>" \
-  --label blocked,needs-human \
-  --priority 1 \
-  --deps discovered-from:<current-issue-id> \
-  --description "Workflow for <original-id> encountered an error during <phase> phase.
-                 
-                 **Error Details**:
-                 - Agent: <agent-type>
-                 - Phase: <phase>
-                 - Timestamp: <timestamp>
-                 - Error: <error-message>
-                 
-                 **Context**:
-                 <relevant context>
-                 
-                 **Action Required**:
-                 Human intervention needed to resolve this blocker.
-                 
-                 Once resolved:
-                 1. Close this blocker issue
-                 2. Run: /workflow <original-id> to resume workflow
-                 
-                 **Reference**:
-                 - Original issue: <original-id>
-                 - Orchestrator tracking: <orch-id>
-                 - Failed at: <current-issue-id>" \
-  --json
+// 2. Create blocker issue
+const blockerIssue = beads_create({
+  title: `Blocker: ${agentType} failed on ${issueId}`,
+  label: "blocked,needs-human",
+  priority: 1,
+  deps: `discovered-from:${currentIssueId}`,
+  description: `Workflow for ${originalId} encountered an error during ${phase} phase.
+    
+    **Error Details**:
+    - Agent: ${agentType}
+    - Phase: ${phase}
+    - Timestamp: ${new Date().toISOString()}
+    - Error: ${errorMessage}
+    
+    **Context**:
+    ${relevantContext}
+    
+    **Action Required**:
+    Human intervention needed to resolve this blocker.
+    
+    Once resolved:
+    1. Close this blocker issue
+    2. Run: /workflow ${originalId} to resume workflow
+    
+    **Reference**:
+    - Original issue: ${originalId}
+    - Orchestrator tracking: ${orchId}
+    - Failed at: ${currentIssueId}`
+});
 
-# 3. Update orchestrator tracking
-bd update <orch-id> \
-  --notes '{"paused": true, "errors": [...], "blocker": "<blocker-id>"}' \
-  --json
+// 3. Update orchestrator tracking
+beads_update({
+  id: orchId,
+  notes: JSON.stringify({
+    paused: true,
+    errors: [...],
+    blocker: blockerIssue.id
+  })
+});
 
-# 4. Block original issue
-bd update <original-id> --status blocked --json
+// 4. Block original issue
+beads_update({ id: originalId, status: "blocked" });
 ```
 
 **Display error message**:
@@ -1104,28 +1171,6 @@ When user runs `/workflow <issue-id>` and workflow exists:
 
 ---
 
-## Subagent Specifications
-
-All specialized agents are defined as OpenCode native subagents in `.opencode/agent/`:
-
-| Agent | File | Description |
-|-------|------|-------------|
-| **Backend** | `.opencode/agent/backend.md` | Node.js/Express server-side implementation |
-| **Frontend** | `.opencode/agent/frontend.md` | Vanilla HTML/CSS/JavaScript UI implementation |
-| **Testing** | `.opencode/agent/testing.md` | Jest/Supertest test infrastructure and quality assurance |
-| **DevOps** | `.opencode/agent/devops.md` | Dependencies, builds, and CI/CD |
-| **Reviewer** | `.opencode/agent/reviewer.md` | Code quality gate for review and approval decisions |
-
-**Using @mention syntax**: When you invoke a subagent using `@backend`, `@frontend`, `@testing`, `@devops`, or `@reviewer`, OpenCode automatically loads the corresponding agent specification from the `.opencode/agent/` directory.
-
-**Agent Configurations**: Each agent file contains:
-- Description and mode
-- Tool permissions (write, edit, bash)
-- Bash command permissions (allow/ask/deny patterns)
-- Temperature settings
-- Domain-specific workflows and best practices
-- Available MCP tools (beads, Context7, etc.)
-
 ## Reference Documentation
 
 For additional context and details:
@@ -1152,10 +1197,11 @@ $arguments = "dashboard-bpr"
 ```
 $arguments = "" (empty)
 ```
-- Follow Step 0a (Smart Suggestions Dashboard)
-- Show overview of all workflows and ready issues
-- Provide suggested next actions
-- Exit without starting a workflow
+- Automatically execute Step 0a (Smart Suggestions Dashboard)
+- Query beads for active/paused workflows, ready issues, and blockers
+- Display comprehensive dashboard with numbered action options
+- Wait for user to select an option (1-5)
+- Execute the selected action immediately
 
 **Case 3: User runs `/workflow dashboard-bpr --resume`**
 ```

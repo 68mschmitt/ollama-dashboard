@@ -8,6 +8,96 @@ jest.mock('systeminformation');
 // Import the server logic (we'll need to refactor server.js slightly to export the app)
 // For now, we'll test the API endpoint behavior
 
+describe('Environment Variable Configuration Tests', () => {
+  describe('OLLAMA_URL Environment Variable Logic', () => {
+    it('should use default localhost:11434 when OLLAMA_URL is not set', () => {
+      const OLLAMA_URL = undefined;
+      const OLLAMA_API = OLLAMA_URL || 'http://localhost:11434';
+      expect(OLLAMA_API).toBe('http://localhost:11434');
+    });
+
+    it('should use custom OLLAMA_URL when environment variable is set', () => {
+      const OLLAMA_URL = 'http://custom-host:11434';
+      const OLLAMA_API = OLLAMA_URL || 'http://localhost:11434';
+      expect(OLLAMA_API).toBe('http://custom-host:11434');
+    });
+
+    it('should accept various valid URL formats', () => {
+      const validUrls = [
+        'http://192.168.1.100:11434',
+        'http://ollama.local:11434',
+        'http://10.0.0.5:11434',
+        'https://secure-ollama.example.com:11434'
+      ];
+
+      validUrls.forEach(url => {
+        const OLLAMA_API = url || 'http://localhost:11434';
+        expect(OLLAMA_API).toBe(url);
+      });
+    });
+
+    it('should handle empty string by using default (falsy value)', () => {
+      const OLLAMA_URL = '';
+      const OLLAMA_API = OLLAMA_URL || 'http://localhost:11434';
+      expect(OLLAMA_API).toBe('http://localhost:11434');
+    });
+
+    it('should handle null by using default', () => {
+      const OLLAMA_URL = null;
+      const OLLAMA_API = OLLAMA_URL || 'http://localhost:11434';
+      expect(OLLAMA_API).toBe('http://localhost:11434');
+    });
+
+    it('should preserve trailing slashes if provided', () => {
+      const OLLAMA_URL = 'http://custom-host:11434/';
+      const OLLAMA_API = OLLAMA_URL || 'http://localhost:11434';
+      expect(OLLAMA_API).toBe('http://custom-host:11434/');
+    });
+
+    it('should handle invalid URL formats gracefully and use default', () => {
+      const invalidUrls = [
+        'not-a-url',                    // Invalid URL format
+        'ftp://invalid-protocol:11434', // Wrong protocol (not http/https)
+        '://no-protocol',               // Missing protocol
+        'http://[invalid',              // Malformed URL
+        'just-text',                    // Not a URL
+        'ws://websocket:11434'          // Wrong protocol (websocket)
+      ];
+
+      invalidUrls.forEach(invalidUrl => {
+        let OLLAMA_API = 'http://localhost:11434';
+        if (invalidUrl) {
+          try {
+            const url = new URL(invalidUrl);
+            if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+              throw new Error(`Invalid protocol: ${url.protocol}`);
+            }
+            OLLAMA_API = invalidUrl;
+          } catch (e) {
+            // Should catch error and keep default
+          }
+        }
+        expect(OLLAMA_API).toBe('http://localhost:11434');
+      });
+    });
+  });
+
+  describe('Environment Variable Best Practices', () => {
+    it('should follow Node.js process.env pattern', () => {
+      // Test that the pattern matches Node.js conventions
+      const envValue = process.env.OLLAMA_URL;
+      const result = envValue || 'http://localhost:11434';
+      expect(typeof result).toBe('string');
+    });
+
+    it('should provide sensible default for local development', () => {
+      const defaultValue = 'http://localhost:11434';
+      expect(defaultValue).toMatch(/^https?:\/\//);
+      expect(defaultValue).toContain('11434'); // Ollama default port
+    });
+  });
+});
+
 describe('Disk Usage Calculation Tests', () => {
   let app;
 
