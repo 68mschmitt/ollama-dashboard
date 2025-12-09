@@ -105,60 +105,73 @@ const blockedIssues = beads_list({
 **Display Smart Suggestions Dashboard**:
 
 ```
-═══════════════════════════════════════════════════════
-🎯 Workflow Dashboard
-═══════════════════════════════════════════════════════
+╔═══════════════════════════════════════════════════════╗
+║              🎯 WORKFLOW DASHBOARD                     ║
+╚═══════════════════════════════════════════════════════╝
 
-ACTIVE WORKFLOWS:
+┌─ ACTIVE WORKFLOWS ──────────────────────────────────┐
 <if any in-progress workflows>
-  • dashboard-bpr (backend) - At testing phase (iteration 1/3)
-  • dashboard-x90 (backend) - At review phase (iteration 2/3)
+  ▸ dashboard-bpr (backend) 
+    Phase: Testing | Iteration: 1/3
+  
+  ▸ dashboard-x90 (backend)
+    Phase: Review | Iteration: 2/3
 <else>
-  None
+│ No active workflows
+<endif>
+└─────────────────────────────────────────────────────┘
 
-PAUSED WORKFLOWS:
-<if any paused workflows>
-  • dashboard-abc (backend) - Paused at development (iteration 3/3)
+<if paused workflows>
+┌─ PAUSED WORKFLOWS ⚠️ ───────────────────────────────┐
+  ⏸  dashboard-abc (backend)
+    Paused at: Development | Iteration: 3/3
     Reason: Max iterations reached
-    Action: Resolve escalation dashboard-abc-esc
-<else>
-  None
-
-READY ISSUES (can start now):
-Backend:
-  • dashboard-def - Add streaming API endpoint (priority 1)
-  • dashboard-ghi - Fix error handling bug (priority 2)
-
-Frontend:
-  • dashboard-jkl - Add dark mode toggle (priority 2)
-
-Testing:
-  • dashboard-mno - Add integration tests (priority 3)
-
-<if none>
-  No ready issues found
+    ➜ Action: Resolve escalation dashboard-abc-esc
+└─────────────────────────────────────────────────────┘
 <endif>
 
-BLOCKED ISSUES (need attention):
-<if any blocked>
-  • dashboard-pqr - Blocker: Test agent failed
-  • dashboard-stu - Escalation: Needs human review
-<else>
-  None
+┌─ READY ISSUES ✓ ────────────────────────────────────┐
+<if backend issues>
+│ 🔧 Backend:
+│   • dashboard-def — Add streaming API endpoint [P1]
+│   • dashboard-ghi — Fix error handling bug [P2]
+│
+<endif>
+<if frontend issues>
+│ 🎨 Frontend:
+│   • dashboard-jkl — Add dark mode toggle [P2]
+│
+<endif>
+<if testing issues>
+│ ✓ Testing:
+│   • dashboard-mno — Add integration tests [P3]
+│
+<endif>
+<if no ready issues>
+│ No ready issues available
+<endif>
+└─────────────────────────────────────────────────────┘
 
-═══════════════════════════════════════════════════════
-SUGGESTED ACTIONS:
-(Type the number corresponding to your choice)
+<if blocked issues>
+┌─ BLOCKED ISSUES ⚠️ ─────────────────────────────────┐
+│ ⛔ dashboard-pqr — Blocker: Test agent failed
+│ ⛔ dashboard-stu — Escalation: Needs human review
+└─────────────────────────────────────────────────────┘
+<endif>
+
+╔═══════════════════════════════════════════════════════╗
+║            📋 SUGGESTED NEXT ACTIONS                   ║
+╚═══════════════════════════════════════════════════════╝
 
 <prioritize suggestions based on context>
 
-1. Resume paused workflow for dashboard-abc
-2. Start high-priority backend work (dashboard-def)
-3. Start frontend work (dashboard-jkl)
-4. View all ready issues
-5. View issue details for dashboard-def
+  [1] Resume paused workflow → dashboard-abc
+  [2] Start high-priority work → dashboard-def (Backend)
+  [3] Start frontend work → dashboard-jkl
+  [4] View all ready issues
+  [5] View details → dashboard-def
 
-═══════════════════════════════════════════════════════
+Enter choice [1-5]:
 ```
 
 **Implementation Notes**:
@@ -362,6 +375,12 @@ const orchIssue = beads_create({
 
 // Store tracking issue ID
 const orchId = orchIssue.id;
+
+// IMPORTANT: Move tracking issue to in_progress immediately
+beads_update({
+  id: orchId,
+  status: "in_progress"
+});
 ```
 
 **Store tracking issue ID** for all subsequent updates.
@@ -371,34 +390,43 @@ const orchId = orchIssue.id;
 Display analysis to user:
 
 ```
-═══════════════════════════════════════════════════════
-Workflow Analysis for <issue-id>
-═══════════════════════════════════════════════════════
+╔═══════════════════════════════════════════════════════╗
+║          📊 WORKFLOW ANALYSIS                          ║
+╚═══════════════════════════════════════════════════════╝
 
-Issue: <title>
-Labels: <labels>
-Priority: <priority>
-Status: <status>
+Issue: <issue-id>
+Title: <title>
 
-Analysis:
-✓ Domain detected: <domain-name>
-✓ Issue is unblocked
-✓ No active workflow found
+┌─ ISSUE DETAILS ─────────────────────────────────────┐
+│ Labels:   <labels>
+│ Priority: <priority>
+│ Status:   <status>
+└─────────────────────────────────────────────────────┘
 
-Implementation Status:
-- Code changes: None detected → Needs implementation
-- Tests: None found → Needs tests
-- Review: Not reviewed → Needs review
+┌─ ANALYSIS ──────────────────────────────────────────┐
+│ ✓ Domain detected: <domain-name>
+│ ✓ Issue is unblocked
+│ ✓ No active workflow found
+└─────────────────────────────────────────────────────┘
 
-Recommended Workflow: Full cycle (dev → test → review)
+┌─ IMPLEMENTATION STATUS ─────────────────────────────┐
+│ Code:   ⚪ None detected → Needs implementation
+│ Tests:  ⚪ None found → Needs tests
+│ Review: ⚪ Not reviewed → Needs review
+└─────────────────────────────────────────────────────┘
 
-═══════════════════════════════════════════════════════
-Options:
-1. Proceed with automated workflow
-2. Cancel and clean up tracking issue
-3. Exit without action
+Recommended: Full workflow cycle
+             (dev → test → review)
 
-Select option (1-3):
+╔═══════════════════════════════════════════════════════╗
+║              🚀 WORKFLOW OPTIONS                       ║
+╚═══════════════════════════════════════════════════════╝
+
+  [1] Proceed with automated workflow
+  [2] Cancel and clean up tracking issue
+  [3] Exit without action
+
+Enter choice [1-3]:
 ```
 
 **User Selection**:
@@ -455,10 +483,10 @@ YOUR TASKS:
    - Use Context7 for documentation lookups if needed
    - Test your changes manually
 
-3. Document your work using beads_comment:
-   beads_comment({
+3. Document your work using beads_update (add to notes field):
+   beads_update({
      id: "<issue-id>",
-     comment: `---
+     notes: `---
    **Agent**: <Domain> Agent
    **Phase**: Development
    **Status**: Completed
@@ -551,10 +579,10 @@ YOUR TASKS:
    - Error conditions
    - Integration points
 
-5. Document test coverage using beads_comment:
-   beads_comment({
+5. Document test coverage using beads_update (add to notes field):
+   beads_update({
      id: "<test-id>",
-     comment: `---
+     notes: `---
    **Agent**: Testing Agent
    **Phase**: Testing
    **Status**: Completed
@@ -674,10 +702,10 @@ YOUR TASKS:
    **APPROVE**: If ALL criteria pass
    **REQUEST CHANGES**: If ANY criteria needs work
 
-6. Document review using beads_comment:
-   beads_comment({
+6. Document review using beads_update (add to notes field):
+   beads_update({
      id: "<review-id>",
-     comment: `---
+     notes: `---
    **Agent**: Reviewer Agent
    **Phase**: Review
    **Status**: <Approved|Changes Requested>
@@ -736,30 +764,39 @@ beads_close({ id: testId, reason: "Tests validated" });
 beads_close({ id: devId, reason: "Implementation approved" }); // If separate
 beads_close({ 
   id: originalId, 
-  reason: "Implementation complete and approved after 1 iterations" 
+  reason: `Implementation complete and approved after ${iteration} iteration(s)` 
 });
-beads_close({ id: orchId, reason: "Workflow completed successfully" });
+
+// IMPORTANT: Close orchestrator tracking issue last
+beads_close({ 
+  id: orchId, 
+  reason: "Workflow completed successfully" 
+});
 ```
 
 **Display completion summary**:
 
 ```
-═══════════════════════════════════════════════════════
-✓ Workflow Complete for <issue-id>
-═══════════════════════════════════════════════════════
+╔═══════════════════════════════════════════════════════╗
+║         ✅ WORKFLOW COMPLETE                           ║
+╚═══════════════════════════════════════════════════════╝
 
-Original Issue: <issue-id> - <title>
-Duration: <start-time> to <end-time>
-Iterations: <n>
-Issues Closed: <count>
+Issue: <issue-id>
+Title: <title>
 
-Summary:
-- Development: <dev-id> ✓
-- Testing: <test-id> ✓
-- Review: <review-id> ✓
+┌─ WORKFLOW SUMMARY ──────────────────────────────────┐
+│ Duration:   <start-time> → <end-time>
+│ Iterations: <n>
+│ Issues:     <count> closed
+└─────────────────────────────────────────────────────┘
 
-All phases completed successfully.
-═══════════════════════════════════════════════════════
+┌─ PHASES COMPLETED ──────────────────────────────────┐
+│ ✓ Development → <dev-id>
+│ ✓ Testing     → <test-id>
+│ ✓ Review      → <review-id>
+└─────────────────────────────────────────────────────┘
+
+🎉 All phases completed successfully!
 ```
 
 **Exit workflow**.
@@ -878,24 +915,27 @@ beads_update({
 **Display escalation message**:
 
 ```
-═══════════════════════════════════════════════════════
-⚠ Workflow Escalated - Human Review Required
-═══════════════════════════════════════════════════════
+╔═══════════════════════════════════════════════════════╗
+║     ⚠️  WORKFLOW ESCALATED - HUMAN REVIEW REQUIRED    ║
+╚═══════════════════════════════════════════════════════╝
 
-Issue: <original-id> - <title>
-Reason: Maximum iterations (3) reached
-Escalation: <escalation-id>
+Issue: <original-id>
+Title: <title>
 
-The automated workflow has completed 3 dev→review cycles
-but implementation still does not meet review criteria.
+┌─ ESCALATION DETAILS ────────────────────────────────┐
+│ Reason:     Max iterations reached (3)
+│ Escalation: <escalation-id>
+└─────────────────────────────────────────────────────┘
 
-Human intervention is required.
+The automated workflow completed 3 dev→review cycles,
+but the implementation still does not meet review criteria.
 
-To resume after manual fixes:
-1. Resolve escalation issue: <escalation-id>
-2. Run: /workflow <original-id>
+👤 Human intervention required
 
-═══════════════════════════════════════════════════════
+┌─ NEXT STEPS ────────────────────────────────────────┐
+│ 1. Review and resolve: <escalation-id>
+│ 2. Run: /workflow <original-id>
+└─────────────────────────────────────────────────────┘
 ```
 
 **Exit workflow**.
@@ -909,9 +949,9 @@ To resume after manual fixes:
 **Use MCP functions**:
 ```javascript
 // 1. Document error in current issue
-beads_comment({
+beads_update({
   id: currentIssueId,
-  comment: `ERROR: ${errorDetails}`
+  notes: `ERROR: ${errorDetails}`
 });
 
 // 2. Create blocker issue
@@ -961,24 +1001,26 @@ beads_update({ id: originalId, status: "blocked" });
 **Display error message**:
 
 ```
-═══════════════════════════════════════════════════════
-✗ Workflow Error - Blocked
-═══════════════════════════════════════════════════════
+╔═══════════════════════════════════════════════════════╗
+║          ❌ WORKFLOW ERROR - BLOCKED                   ║
+╚═══════════════════════════════════════════════════════╝
 
-Issue: <original-id> - <title>
-Phase: <phase>
-Agent: <agent-type>
+Issue: <original-id>
+Title: <title>
 
-Error: <error-summary>
+┌─ ERROR DETAILS ─────────────────────────────────────┐
+│ Phase: <phase>
+│ Agent: <agent-type>
+│ Error: <error-summary>
+└─────────────────────────────────────────────────────┘
 
-A blocker issue has been created: <blocker-id>
+Blocker created: <blocker-id>
 
-To resume after resolving the blocker:
-1. Fix the issue
-2. Close blocker: <blocker-id>
-3. Run: /workflow <original-id>
-
-═══════════════════════════════════════════════════════
+┌─ RESOLUTION STEPS ──────────────────────────────────┐
+│ 1. Fix the underlying issue
+│ 2. Close blocker: <blocker-id>
+│ 3. Resume: /workflow <original-id>
+└─────────────────────────────────────────────────────┘
 ```
 
 **Exit workflow**.
@@ -1034,11 +1076,12 @@ All workflow state is stored in orchestrator tracking issue notes as JSON:
 All beads MCP functions (see `.opencode/docs/mcp-tools-reference.md` and `.opencode/docs/beads-mcp-migration.md`):
 - `beads_ready()` - List ready issues
 - `beads_create()` - Create new issues
-- `beads_update()` - Update issue fields
+- `beads_update()` - Update issue fields (including notes)
 - `beads_close()` - Close completed issues
 - `beads_show()` - Get issue details
 - `beads_list()` - List issues with filters
-- `beads_comment()` - Add comments to issues
+
+Note: Use the `notes` field in `beads_update()` to add comments/documentation to issues
 
 ### Other Tools
 You don't use Context7, Puppeteer, or other specialist tools directly.

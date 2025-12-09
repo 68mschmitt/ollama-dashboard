@@ -7,9 +7,8 @@ tools:
   bash: true
 permission:
   edit: allow
-  bash:
-    "bd *": allow
-    "*": ask
+  bash: allow
+  webfetch: allow
 temperature: 0.4
 ---
 

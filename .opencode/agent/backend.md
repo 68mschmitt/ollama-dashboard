@@ -7,12 +7,8 @@ tools:
   bash: true
 permission:
   edit: allow
-  bash:
-    "bd *": allow
-    "npm *": allow
-    "node *": allow
-    "curl *": allow
-    "*": ask
+  bash: allow
+  webfetch: allow
 temperature: 0.3
 ---
 

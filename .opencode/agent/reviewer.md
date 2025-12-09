@@ -7,11 +7,8 @@ tools:
   bash: true
 permission:
   edit: deny
-  bash:
-    "bd *": allow
-    "git diff*": allow
-    "git log*": allow
-    "*": ask
+  bash: allow
+  webfetch: allow
 temperature: 0.1
 ---
 
