@@ -1,5 +1,9 @@
 const API_URL = 'http://localhost:3000/api';
 let refreshInterval;
+let consecutiveErrors = 0;
+let currentBackoffDelay = 5000; // Start with 5 seconds
+const MAX_BACKOFF_DELAY = 60000; // Max 1 minute
+const BASE_REFRESH_INTERVAL = 5000;
 
 // Initialize dashboard
 document.addEventListener('DOMContentLoaded', () => {
@@ -281,12 +285,67 @@ async function handleGenerate() {
     }
 }
 
-// Start auto-refresh
+// Start auto-refresh with error handling and exponential backoff
 function startAutoRefresh() {
-    refreshInterval = setInterval(() => {
-        checkHealth();
-        loadData();
-    }, 5000); // Refresh every 5 seconds
+    const refresh = async () => {
+        try {
+            await checkHealth();
+            await loadData();
+            
+            // Success - reset error state
+            if (consecutiveErrors > 0) {
+                consecutiveErrors = 0;
+                currentBackoffDelay = BASE_REFRESH_INTERVAL;
+                showToast('Connection restored', 'success');
+            }
+        } catch (error) {
+            consecutiveErrors++;
+            console.error(`Refresh failed (${consecutiveErrors} consecutive errors):`, error);
+            
+            // Calculate exponential backoff: 5s, 10s, 20s, 40s, 60s (max)
+            currentBackoffDelay = Math.min(
+                BASE_REFRESH_INTERVAL * Math.pow(2, consecutiveErrors - 1),
+                MAX_BACKOFF_DELAY
+            );
+            
+            // Show user-friendly error after 3 consecutive failures
+            if (consecutiveErrors === 3) {
+                showToast('Dashboard connection issues. Retrying...', 'error');
+            }
+            
+            // Reschedule with backoff delay
+            clearInterval(refreshInterval);
+            refreshInterval = setInterval(refresh, currentBackoffDelay);
+        }
+    };
+    
+    refreshInterval = setInterval(refresh, BASE_REFRESH_INTERVAL);
+}
+
+// Display toast notification to user
+function showToast(message, type = 'info') {
+    // Remove existing toast if present
+    const existingToast = document.querySelector('.toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+    
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    
+    // Add to DOM
+    document.body.appendChild(toast);
+    
+    // Trigger animation
+    setTimeout(() => toast.classList.add('show'), 10);
+    
+    // Auto-remove after 4 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
 }
 
 // Update last updated timestamp
