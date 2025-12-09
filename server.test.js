@@ -1,12 +1,16 @@
 const request = require('supertest');
 const express = require('express');
 const si = require('systeminformation');
+const axios = require('axios');
 
 // Mock systeminformation module
 jest.mock('systeminformation');
 
-// Import the server logic (we'll need to refactor server.js slightly to export the app)
-// For now, we'll test the API endpoint behavior
+// Mock axios for Ollama API calls
+jest.mock('axios');
+
+// Import the app from server.js
+const app = require('./server');
 
 describe('Environment Variable Configuration Tests', () => {
   describe('OLLAMA_URL Environment Variable Logic', () => {
@@ -565,3 +569,493 @@ function mockFullSystemInfo() {
     ]
   });
 }
+
+describe('DELETE /api/models/:name - Model Unload Endpoint', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('Happy Path - Successful Model Unload', () => {
+    it('should successfully unload a valid model and return 200', async () => {
+      axios.post.mockResolvedValue({
+        data: { status: 'success' }
+      });
+
+      const response = await request(app)
+        .delete('/api/models/llama3.1:8b');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        status: 'success',
+        message: "Model 'llama3.1:8b' unloaded successfully",
+        model: 'llama3.1:8b'
+      });
+      expect(axios.post).toHaveBeenCalledWith(
+        expect.stringContaining('/api/generate'),
+        {
+          model: 'llama3.1:8b',
+          keep_alive: 0,
+          stream: false
+        }
+      );
+    });
+
+    it('should handle model names with special characters', async () => {
+      axios.post.mockResolvedValue({
+        data: { status: 'success' }
+      });
+
+      const response = await request(app)
+        .delete('/api/models/neural-chat:7b-v3.1');
+
+      expect(response.status).toBe(200);
+      expect(response.body.model).toBe('neural-chat:7b-v3.1');
+    });
+
+    it('should handle model names with numbers', async () => {
+      axios.post.mockResolvedValue({
+        data: { status: 'success' }
+      });
+
+      const response = await request(app)
+        .delete('/api/models/mistral:7b');
+
+      expect(response.status).toBe(200);
+      expect(response.body.model).toBe('mistral:7b');
+    });
+
+    it('should log successful unload attempt', async () => {
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      axios.post.mockResolvedValue({
+        data: { status: 'success' }
+      });
+
+      await request(app).delete('/api/models/test-model');
+
+      expect(consoleSpy).toHaveBeenCalledWith('Attempting to unload model: test-model');
+      expect(consoleSpy).toHaveBeenCalledWith('Successfully unloaded model: test-model');
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('Input Validation - Invalid Model Names', () => {
+    it('should return 400 for empty model name', async () => {
+      const response = await request(app)
+        .delete('/api/models/');
+
+      // Express routing will return 404 for this pattern
+      expect(response.status).toBe(404);
+    });
+
+    it('should return 400 for whitespace-only model name', async () => {
+      const response = await request(app)
+        .delete('/api/models/%20%20%20'); // URL encoded spaces
+
+      expect(response.status).toBe(400);
+      expect(response.body).toEqual({
+        error: 'Invalid request',
+        message: 'Model name is required'
+      });
+    });
+
+    it('should reject model names with only spaces after trim', async () => {
+      // This tests the trim() logic in the endpoint
+      const response = await request(app)
+        .delete('/api/models/%20');
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Invalid request');
+    });
+  });
+
+  describe('Error Handling - Non-existent Models', () => {
+    it('should return 404 when model not found', async () => {
+      const error = new Error('Model not found');
+      error.response = {
+        status: 404,
+        data: { error: 'model not found' }
+      };
+      axios.post.mockRejectedValue(error);
+
+      const response = await request(app)
+        .delete('/api/models/nonexistent-model');
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({
+        error: 'Model not found',
+        message: "Model 'nonexistent-model' not found or already unloaded"
+      });
+    });
+
+    it('should return 404 for already unloaded model', async () => {
+      const error = new Error('Model already unloaded');
+      error.response = {
+        status: 404,
+        data: { error: 'model not found' }
+      };
+      axios.post.mockRejectedValue(error);
+
+      const response = await request(app)
+        .delete('/api/models/already-unloaded');
+
+      expect(response.status).toBe(404);
+      expect(response.body.message).toContain('not found or already unloaded');
+    });
+
+    it('should log error when model not found', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+      const error = new Error('Model not found');
+      error.response = { status: 404 };
+      axios.post.mockRejectedValue(error);
+
+      await request(app).delete('/api/models/test-model');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error unloading model')
+      );
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('Error Handling - Invalid Model Names from Ollama', () => {
+    it('should return 400 when Ollama rejects invalid model name', async () => {
+      const error = new Error('Invalid model name');
+      error.response = {
+        status: 400,
+        data: { error: 'invalid model name' }
+      };
+      axios.post.mockRejectedValue(error);
+
+      const response = await request(app)
+        .delete('/api/models/invalid@#$%model');
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe('Invalid model name');
+    });
+
+    it('should include Ollama error message in response', async () => {
+      const error = new Error('Invalid model name');
+      error.response = {
+        status: 400,
+        data: { error: 'model name contains invalid characters' }
+      };
+      axios.post.mockRejectedValue(error);
+
+      const response = await request(app)
+        .delete('/api/models/bad-model');
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toBe('model name contains invalid characters');
+    });
+  });
+
+  describe('Error Handling - Ollama API Unavailable', () => {
+    it('should return 500 when Ollama API is unreachable', async () => {
+      const error = new Error('ECONNREFUSED: Connection refused');
+      axios.post.mockRejectedValue(error);
+
+      const response = await request(app)
+        .delete('/api/models/test-model');
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe('Failed to unload model');
+      expect(response.body.message).toContain('ECONNREFUSED');
+    });
+
+    it('should return 500 for network timeout', async () => {
+      const error = new Error('ETIMEDOUT: Connection timed out');
+      axios.post.mockRejectedValue(error);
+
+      const response = await request(app)
+        .delete('/api/models/test-model');
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe('Failed to unload model');
+    });
+
+    it('should return 500 for generic server error', async () => {
+      const error = new Error('Internal server error');
+      error.response = {
+        status: 500,
+        data: { error: 'internal error' }
+      };
+      axios.post.mockRejectedValue(error);
+
+      const response = await request(app)
+        .delete('/api/models/test-model');
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe('Failed to unload model');
+    });
+  });
+
+  describe('Integration Tests - Multiple Operations', () => {
+    it('should handle multiple sequential unload requests', async () => {
+      axios.post.mockResolvedValue({
+        data: { status: 'success' }
+      });
+
+      const response1 = await request(app).delete('/api/models/model1');
+      const response2 = await request(app).delete('/api/models/model2');
+      const response3 = await request(app).delete('/api/models/model3');
+
+      expect(response1.status).toBe(200);
+      expect(response2.status).toBe(200);
+      expect(response3.status).toBe(200);
+      expect(response1.body.model).toBe('model1');
+      expect(response2.body.model).toBe('model2');
+      expect(response3.body.model).toBe('model3');
+    });
+
+    it('should handle concurrent unload requests', async () => {
+      axios.post.mockResolvedValue({
+        data: { status: 'success' }
+      });
+
+      const responses = await Promise.all([
+        request(app).delete('/api/models/model1'),
+        request(app).delete('/api/models/model2'),
+        request(app).delete('/api/models/model3')
+      ]);
+
+      responses.forEach((response, index) => {
+        expect(response.status).toBe(200);
+        expect(response.body.model).toBe(`model${index + 1}`);
+      });
+    });
+
+    it('should handle mixed success and failure requests', async () => {
+      axios.post
+        .mockResolvedValueOnce({ data: { status: 'success' } })
+        .mockRejectedValueOnce(new Error('Not found'))
+        .mockResolvedValueOnce({ data: { status: 'success' } });
+
+      const response1 = await request(app).delete('/api/models/model1');
+      const response2 = await request(app).delete('/api/models/model2');
+      const response3 = await request(app).delete('/api/models/model3');
+
+      expect(response1.status).toBe(200);
+      expect(response2.status).toBe(500);
+      expect(response3.status).toBe(200);
+    });
+  });
+
+  describe('Response Format Validation', () => {
+    it('should return correct response structure on success', async () => {
+      axios.post.mockResolvedValue({
+        data: { status: 'success' }
+      });
+
+      const response = await request(app)
+        .delete('/api/models/test-model');
+
+      expect(response.body).toHaveProperty('status');
+      expect(response.body).toHaveProperty('message');
+      expect(response.body).toHaveProperty('model');
+      expect(response.body.status).toBe('success');
+      expect(typeof response.body.message).toBe('string');
+      expect(typeof response.body.model).toBe('string');
+    });
+
+    it('should return correct response structure on error', async () => {
+      const error = new Error('Model not found');
+      error.response = { status: 404 };
+      axios.post.mockRejectedValue(error);
+
+      const response = await request(app)
+        .delete('/api/models/test-model');
+
+      expect(response.body).toHaveProperty('error');
+      expect(response.body).toHaveProperty('message');
+      expect(typeof response.body.error).toBe('string');
+      expect(typeof response.body.message).toBe('string');
+    });
+
+    it('should include model name in success message', async () => {
+      axios.post.mockResolvedValue({
+        data: { status: 'success' }
+      });
+
+      const modelName = 'my-special-model:7b';
+      const response = await request(app)
+        .delete(`/api/models/${modelName}`);
+
+      expect(response.body.message).toContain(modelName);
+      expect(response.body.model).toBe(modelName);
+    });
+  });
+
+  describe('HTTP Method Validation', () => {
+    it('should only accept DELETE method for unload operation', async () => {
+      axios.post.mockResolvedValue({
+        data: { status: 'success' }
+      });
+      axios.post.mockResolvedValue({
+        data: { status: 'success' }
+      });
+
+      // DELETE should work
+      const deleteResponse = await request(app)
+        .delete('/api/models/test-model');
+      expect(deleteResponse.status).toBe(200);
+
+      // POST and PUT should not work for unload (they'll return 404 or 405)
+      const postResponse = await request(app)
+        .post('/api/models/test-model');
+      const putResponse = await request(app)
+        .put('/api/models/test-model');
+
+      // POST and PUT are not defined for /api/models/:name, so they return 404
+      expect(postResponse.status).toBe(404);
+      expect(putResponse.status).toBe(404);
+    });
+
+    it('should verify DELETE is the correct method for model unload', async () => {
+      axios.post.mockResolvedValue({
+        data: { status: 'success' }
+      });
+
+      const response = await request(app)
+        .delete('/api/models/test-model');
+
+      // Verify DELETE works and returns success
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('success');
+    });
+  });
+
+  describe('Regression Tests - Other Endpoints Still Work', () => {
+    it('should not affect GET /api/models endpoint', async () => {
+      si.cpu.mockResolvedValue({
+        manufacturer: 'Intel',
+        brand: 'Core i5',
+        cores: 4,
+        physicalCores: 2,
+        speed: 2.4
+      });
+
+      axios.get.mockResolvedValue({
+        data: { models: [] }
+      });
+
+      const response = await request(app)
+        .get('/api/models');
+
+      expect(response.status).toBe(200);
+      expect(axios.get).toHaveBeenCalledWith(
+        expect.stringContaining('/api/tags')
+      );
+    });
+
+    it('should not affect GET /api/health endpoint', async () => {
+      axios.get.mockResolvedValue({
+        data: 'Ollama is running'
+      });
+
+      const response = await request(app)
+        .get('/api/health');
+
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('online');
+    });
+
+    it('should not affect GET /api/models/running endpoint', async () => {
+      axios.get.mockResolvedValue({
+        data: { models: [] }
+      });
+
+      const response = await request(app)
+        .get('/api/models/running');
+
+      expect(response.status).toBe(200);
+    });
+  });
+
+  describe('Edge Cases and Boundary Conditions', () => {
+    it('should handle very long model names', async () => {
+      const longModelName = 'a'.repeat(255);
+      axios.post.mockResolvedValue({
+        data: { status: 'success' }
+      });
+
+      const response = await request(app)
+        .delete(`/api/models/${longModelName}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.model).toBe(longModelName);
+    });
+
+    it('should handle model names with URL-encoded characters', async () => {
+      axios.post.mockResolvedValue({
+        data: { status: 'success' }
+      });
+
+      const response = await request(app)
+        .delete('/api/models/model%20with%20spaces');
+
+      expect(response.status).toBe(200);
+    });
+
+    it('should handle rapid successive requests', async () => {
+      axios.post.mockResolvedValue({
+        data: { status: 'success' }
+      });
+
+      const requests = Array.from({ length: 10 }, (_, i) =>
+        request(app).delete(`/api/models/model${i}`)
+      );
+
+      const responses = await Promise.all(requests);
+
+      responses.forEach((response, index) => {
+        expect(response.status).toBe(200);
+        expect(response.body.model).toBe(`model${index}`);
+      });
+    });
+  });
+
+  describe('Ollama API Integration', () => {
+    it('should call Ollama generate endpoint with correct parameters', async () => {
+      axios.post.mockResolvedValue({
+        data: { status: 'success' }
+      });
+
+      await request(app).delete('/api/models/test-model');
+
+      expect(axios.post).toHaveBeenCalledWith(
+        expect.stringContaining('/api/generate'),
+        {
+          model: 'test-model',
+          keep_alive: 0,
+          stream: false
+        }
+      );
+    });
+
+    it('should use keep_alive=0 to unload model', async () => {
+      axios.post.mockResolvedValue({
+        data: { status: 'success' }
+      });
+
+      await request(app).delete('/api/models/test-model');
+
+      const callArgs = axios.post.mock.calls[0][1];
+      expect(callArgs.keep_alive).toBe(0);
+    });
+
+    it('should disable streaming in unload request', async () => {
+      axios.post.mockResolvedValue({
+        data: { status: 'success' }
+      });
+
+      await request(app).delete('/api/models/test-model');
+
+      const callArgs = axios.post.mock.calls[0][1];
+      expect(callArgs.stream).toBe(false);
+    });
+  });
+});

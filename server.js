@@ -78,6 +78,60 @@ app.get('/api/models/:name', async (req, res) => {
   }
 });
 
+// Unload a model (remove from memory)
+app.delete('/api/models/:name', async (req, res) => {
+  try {
+    const modelName = req.params.name;
+    
+    if (!modelName || modelName.trim() === '') {
+      return res.status(400).json({ 
+        error: 'Invalid request',
+        message: 'Model name is required' 
+      });
+    }
+
+    console.log(`Attempting to unload model: ${modelName}`);
+    
+    // Call Ollama's unload API by sending a generate request with keep_alive=0
+    // This tells Ollama to unload the model from memory
+    const response = await axios.post(`${OLLAMA_API}/api/generate`, {
+      model: modelName,
+      keep_alive: 0,
+      stream: false
+    });
+    
+    console.log(`Successfully unloaded model: ${modelName}`);
+    
+    res.json({ 
+      status: 'success',
+      message: `Model '${modelName}' unloaded successfully`,
+      model: modelName
+    });
+  } catch (error) {
+    console.error(`Error unloading model: ${error.message}`);
+    
+    // Handle specific error cases
+    if (error.response?.status === 404) {
+      return res.status(404).json({ 
+        error: 'Model not found',
+        message: `Model '${req.params.name}' not found or already unloaded` 
+      });
+    }
+    
+    if (error.response?.status === 400) {
+      return res.status(400).json({ 
+        error: 'Invalid model name',
+        message: error.response.data?.error || 'The model name provided is invalid' 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to unload model',
+      message: error.message 
+    });
+  }
+});
+
 // Health check for Ollama server
 app.get('/api/health', async (req, res) => {
   try {
@@ -190,7 +244,13 @@ app.get('/api/hardware', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Ollama Metrics Dashboard running on http://localhost:${PORT}`);
-  console.log(`Monitoring Ollama at ${OLLAMA_API}`);
-});
+// Export app for testing
+module.exports = app;
+
+// Only start server if this file is run directly (not imported for testing)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Ollama Metrics Dashboard running on http://localhost:${PORT}`);
+    console.log(`Monitoring Ollama at ${OLLAMA_API}`);
+  });
+}
