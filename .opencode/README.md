@@ -53,10 +53,10 @@ To add a new project command:
 
 ## Related Documentation
 
-- **Agent Instructions**: `.agents/` directory
+- **Agent Instructions**: `.opencode/agent/` directory
 - **Workflow System**: `AGENTS.md` → "Automated Workflow System"
-- **MCP Tools**: `.agents/mcp-tools-reference.md`
-- **Templates**: `.agents/handoff-templates.md`
+- **MCP Tools**: `.opencode/docs/mcp-tools-reference.md`
+- **Templates**: `.opencode/docs/handoff-templates.md`
 
 ---
 

@@ -15,7 +15,7 @@ This project uses specialized agents coordinated through beads issue tracking.
 
 Tell OpenCode to load specific agent context:
 
-> "Load the backend agent instructions from .agents/backend_agent.md and check for backend work"
+> "@backend check for backend work and show what's ready"
 
 ### Agent Workflow
 

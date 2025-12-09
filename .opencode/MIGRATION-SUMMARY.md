@@ -197,14 +197,14 @@ To test the migration:
    ```
    Expected: Orchestrator routes through dev → test → review
 
-## Backwards Compatibility
+## Migration Complete
 
-The old `.agents/` directory still exists but is **deprecated**. All new functionality uses `.opencode/agent/`.
+The old `.agents/` directory has been **removed completely**. All new functionality uses `.opencode/agent/`.
 
-To fully migrate:
-- Old `.agents/` directory can be archived or removed
-- All references now point to `.opencode/`
-- No code dependencies on `.agents/` remain
+Status:
+- ✅ Old `.agents/` directory removed
+- ✅ All references updated to `.opencode/`
+- ✅ No code dependencies on `.agents/` remain
 
 ## Next Steps
 
