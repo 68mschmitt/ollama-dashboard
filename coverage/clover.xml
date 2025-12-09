@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1765317114251" clover="3.2.0">
-  <project timestamp="1765317114251" name="All files">
+<coverage generated="1765317689588" clover="3.2.0">
+  <project timestamp="1765317689588" name="All files">
     <metrics statements="73" coveredstatements="44" conditionals="38" coveredconditionals="13" methods="12" coveredmethods="4" elements="123" coveredelements="61" complexity="0" loc="73" ncloc="73" packages="1" files="1" classes="1"/>
     <file name="server.js" path="/Users/michael.schmitt/projects/vibing-dude/get-ollama-to-work/dashboard/server.js">
       <metrics statements="73" coveredstatements="44" conditionals="38" coveredconditionals="13" methods="12" coveredmethods="4"/>

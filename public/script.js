@@ -68,12 +68,24 @@ async function loadRunningModels() {
                 <div class="model-compact-item">
                     <div class="model-compact-header">
                         <strong>${model.name}</strong>
+                        <button class="btn-unload" data-model="${model.name}" aria-label="Unload model">
+                            <span class="unload-icon">✕</span>
+                        </button>
                     </div>
                     <div class="model-compact-details">
                         ${model.size_vram ? `VRAM: ${formatBytes(model.size_vram)}` : `Size: ${formatBytes(model.size)}`}
                     </div>
                 </div>
             `).join('');
+            
+            // Attach event listeners to unload buttons
+            container.querySelectorAll('.btn-unload').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleUnloadClick(btn.dataset.model);
+                });
+            });
         } else {
             runningCount.textContent = '0';
             runningCountBadge.textContent = '0';
@@ -277,6 +289,56 @@ function setupEventListeners() {
     
     const themeToggle = document.getElementById('themeToggle');
     themeToggle.addEventListener('click', toggleTheme);
+}
+
+// Handle unload button click with confirmation
+async function handleUnloadClick(modelName) {
+    // Show confirmation dialog
+    const confirmed = confirm(`Are you sure you want to unload "${modelName}"? This will free up resources.`);
+    
+    if (!confirmed) {
+        return;
+    }
+    
+    // Call unload function
+    await unloadModel(modelName);
+}
+
+// Unload a model via API
+async function unloadModel(modelName) {
+    try {
+        // Show loading state
+        showToast(`Unloading ${modelName}...`, 'info');
+        
+        // Call DELETE endpoint
+        const response = await fetch(`${API_URL}/models/${encodeURIComponent(modelName)}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Success
+            showToast(`Successfully unloaded ${modelName}`, 'success');
+            
+            // Refresh the model list
+            await loadRunningModels();
+            await loadAvailableModels();
+            updateLastUpdated();
+        } else {
+            // Error response from API
+            const errorMessage = data.message || data.error || 'Failed to unload model';
+            showToast(`Error: ${errorMessage}`, 'error');
+            console.error('Unload error:', data);
+        }
+    } catch (error) {
+        // Network or parsing error
+        showToast(`Failed to unload model: ${error.message}`, 'error');
+        console.error('Unload error:', error);
+    }
 }
 
 // Handle test generation
