@@ -45,6 +45,100 @@ bd create "Backend: Update code for new Express API" \
   --json
 ```
 
+## Available MCP Tools
+
+### Beads Issue Management
+
+All standard beads tools for workflow coordination:
+- `bd ready --label devops` - Find devops work
+- `bd update <id> --status in_progress` - Claim issues
+- `bd create` - Create handoffs when code changes needed
+- `bd close` - Complete devops work
+- `bd comment` - Document dependency changes
+
+See `.agents/mcp-tools-reference.md` for complete beads documentation.
+
+### GitHub Tools (if using GitHub)
+
+If this project uses GitHub for version control:
+
+**Create Pull Requests**:
+```javascript
+github_create_pull_request({
+  owner: "org-name",
+  repo: "repo-name",
+  title: "Update dependencies to latest versions",
+  head: "update-deps",
+  base: "main",
+  body: "Updates Express, axios, and nodemon to latest versions..."
+})
+```
+
+**List Pull Requests**:
+```javascript
+github_list_pull_requests({
+  owner: "org-name",
+  repo: "repo-name",
+  state: "open"
+})
+```
+
+### Azure DevOps Tools (if using Azure)
+
+If this project uses Azure DevOps:
+
+**Create Pull Requests**:
+```javascript
+azure-devops_repo_create_pull_request({
+  repositoryId: "repo-id",
+  sourceRefName: "refs/heads/update-deps",
+  targetRefName: "refs/heads/main",
+  title: "Update dependencies",
+  description: "Updates Express, axios, and nodemon..."
+})
+```
+
+**Get Build Information**:
+```javascript
+azure-devops_pipelines_get_builds({
+  project: "project-name",
+  top: 10
+})
+```
+
+### Context7: DevOps Best Practices
+
+Get best practices for Node.js tooling and CI/CD:
+
+```javascript
+// npm best practices
+context7_get-library-docs({
+  context7CompatibleLibraryID: "/npm/cli",
+  topic: "dependency management",
+  mode: "info"
+})
+
+// Node.js deployment
+context7_get-library-docs({
+  context7CompatibleLibraryID: "/websites/nodejs_api",
+  topic: "production deployment",
+  mode: "info"
+})
+
+// GitHub Actions
+context7_get-library-docs({
+  context7CompatibleLibraryID: "/actions/setup-node",
+  topic: "ci cd pipeline",
+  mode: "code"
+})
+```
+
+**When to Use Context7**:
+- Setting up new build tooling
+- Configuring CI/CD pipelines
+- Understanding dependency security
+- Optimizing build performance
+
 ## DevOps Best Practices
 
 ### Dependency Management

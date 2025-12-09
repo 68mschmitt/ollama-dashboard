@@ -44,6 +44,106 @@ bd create "Backend: Fix issue revealed by test" \
   --json
 ```
 
+## Available MCP Tools
+
+### Beads Issue Management
+
+All standard beads tools for workflow coordination:
+- `bd ready --label testing` - Find test work
+- `bd update <id> --status in_progress` - Claim test issues
+- `bd create` - Create handoffs if bugs found
+- `bd close` - Complete testing work
+- `bd comment` - Document test coverage
+
+See `.agents/mcp-tools-reference.md` for complete beads documentation.
+
+### Puppeteer: E2E Test Implementation
+
+Use Puppeteer to write automated end-to-end tests:
+
+**Test Structure Example**:
+
+```javascript
+describe('Dashboard E2E Tests', () => {
+  test('should load and display metrics', async () => {
+    // Navigate
+    await puppeteer_puppeteer_navigate({ 
+      url: "http://localhost:3000" 
+    });
+    
+    // Verify element exists
+    const result = await puppeteer_puppeteer_evaluate({
+      script: "return document.querySelector('#metrics-container') !== null"
+    });
+    expect(result).toBe(true);
+    
+    // Take screenshot for visual verification
+    await puppeteer_puppeteer_screenshot({ 
+      name: "metrics-loaded" 
+    });
+  });
+  
+  test('should refresh data on button click', async () => {
+    await puppeteer_puppeteer_navigate({ 
+      url: "http://localhost:3000" 
+    });
+    
+    // Click refresh
+    await puppeteer_puppeteer_click({ 
+      selector: "#refresh-button" 
+    });
+    
+    // Wait and verify data updated
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const updated = await puppeteer_puppeteer_evaluate({
+      script: "return document.querySelector('#last-updated').textContent"
+    });
+    expect(updated).toBeTruthy();
+  });
+});
+```
+
+**When to Use Puppeteer**:
+- E2E tests for complete user workflows
+- UI interaction testing (clicks, forms, navigation)
+- Visual regression testing (screenshots)
+- JavaScript functionality validation
+- Cross-browser testing scenarios
+
+### Context7: Testing Framework Documentation
+
+Get best practices for testing frameworks:
+
+```javascript
+// Jest testing patterns
+context7_get-library-docs({
+  context7CompatibleLibraryID: "/facebook/jest",
+  topic: "async testing",
+  mode: "code"
+})
+
+// Supertest API testing
+context7_get-library-docs({
+  context7CompatibleLibraryID: "/ladjs/supertest",
+  topic: "api endpoint testing",
+  mode: "code"
+})
+
+// Mocking strategies
+context7_get-library-docs({
+  context7CompatibleLibraryID: "/facebook/jest",
+  topic: "mocking modules",
+  mode: "code"
+})
+```
+
+**When to Use Context7**:
+- Setting up new test infrastructure
+- Learning mocking patterns
+- Understanding coverage goals
+- Implementing test utilities
+
 ## Testing Best Practices
 
 ### Test Structure

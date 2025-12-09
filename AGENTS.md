@@ -148,25 +148,31 @@ This project uses specialized agents to maintain focus and reduce context usage.
 
 ### Available Agents
 
-| Agent | Domain | Label | Instructions |
-|-------|--------|-------|--------------|
-| Backend | Server, API, Node/Express | `backend` | `.agents/backend_agent.md` |
-| Frontend | HTML, CSS, JS, UI/UX | `frontend` | `.agents/frontend_agent.md` |
-| Testing | Tests, QA, infrastructure | `testing` | `.agents/testing_agent.md` |
-| DevOps | Dependencies, build, deploy | `devops` | `.agents/devops_agent.md` |
+| Agent | Domain | Instructions | Invoke |
+|-------|--------|--------------|--------|
+| Backend | Server, API, Node/Express | `.opencode/agent/backend.md` | `@backend` |
+| Frontend | HTML, CSS, JS, UI/UX | `.opencode/agent/frontend.md` | `@frontend` |
+| Testing | Tests, QA, infrastructure | `.opencode/agent/testing.md` | `@testing` |
+| DevOps | Dependencies, build, deploy | `.opencode/agent/devops.md` | `@devops` |
+| Reviewer | Code quality gate | `.opencode/agent/reviewer.md` | `@reviewer` |
 
 ### How to Invoke Specialized Agents
 
-**Pattern**: Tell OpenCode to load specific agent context
+**Using @ mention** (native OpenCode subagents):
 
 ```
-User: "Load the backend agent instructions from .agents/backend_agent.md 
-       and check for backend work"
-
-AI: *Reads backend_agent.md* 
-    *Runs: bd ready --label backend --json*
-    *Works within backend domain scope*
+@backend please implement the SSE streaming endpoint for model generation
 ```
+
+OpenCode will automatically load the backend agent's instructions from `.opencode/agent/backend.md` and invoke it with the configured tools and permissions.
+
+**Using /workflow command** (automated orchestration):
+
+```
+/workflow dashboard-bpr
+```
+
+The workflow orchestrator will automatically route to appropriate agents based on issue labels using the Task tool with @mention syntax.
 
 ### Benefits of Specialized Agents
 
@@ -231,21 +237,21 @@ The frontend agent will discover this via `bd ready --label frontend`.
    - Create: backend task, frontend task, testing task
    - Link with dependencies
 
-2. **Backend Agent** (`.agents/backend_agent.md`)
+2. **Backend Agent** (`.opencode/agent/backend.md`)
    ```bash
    bd ready --label backend
    # Implement SSE endpoint
    bd close backend-task --reason "SSE ready"
    ```
 
-3. **Frontend Agent** (`.agents/frontend_agent.md`)
+3. **Frontend Agent** (`.opencode/agent/frontend.md`)
    ```bash
    bd ready --label frontend
    # Build EventSource consumer UI
    bd close frontend-task --reason "Streaming UI complete"
    ```
 
-4. **Testing Agent** (`.agents/testing_agent.md`)
+4. **Testing Agent** (`.opencode/agent/testing.md`)
    ```bash
    bd ready --label testing
    # Write integration tests
@@ -271,7 +277,241 @@ Each agent maintains minimal context. Beads coordinates everything through git.
 
 ### Getting Started
 
-See `.agents/README.md` for complete agent system documentation.
+See `.opencode/docs/agent-system.md` for complete agent system documentation.
+
+## Automated Workflow System
+
+This project includes an automated dev→test→review workflow system that coordinates specialized agents to complete issues from start to finish.
+
+### Overview
+
+The workflow system automates the complete software development lifecycle:
+
+```
+User: /workflow <issue-id>
+  ↓
+Orchestrator: Analyzes issue, splits if multi-domain
+  ↓
+Developer Agent: Implements solution
+  ↓
+Test Agent: Writes comprehensive tests
+  ↓
+Review Agent: Reviews code quality and best practices
+  ↓
+Approval OR Changes Requested (max 3 iterations)
+  ↓
+Complete: All issues closed ✓
+```
+
+### Available Agents
+
+| Agent | Role | Instructions |
+|-------|------|--------------|
+| **Orchestrator** | Workflow coordination | `.opencode/command/workflow/workflow.md` |
+| **Backend** | Server implementation | `.opencode/agent/backend.md` |
+| **Frontend** | UI implementation | `.opencode/agent/frontend.md` |
+| **Testing** | Test infrastructure | `.opencode/agent/testing.md` |
+| **DevOps** | Build/deploy | `.opencode/agent/devops.md` |
+| **Reviewer** | Code quality gate | `.opencode/agent/reviewer.md` |
+
+### Using the /workflow Command
+
+**Show smart suggestions** (what to do next):
+```
+/workflow
+```
+
+Shows:
+- Active and paused workflows
+- Ready issues grouped by domain
+- Blocked issues needing attention
+- Suggested next actions
+
+**Start a specific workflow**:
+```
+/workflow dashboard-bpr
+```
+
+The orchestrator will:
+1. Check for paused workflows
+2. Analyze the issue (labels, status, dependencies)
+3. Detect and split multi-domain issues
+4. Present smart detection menu for confirmation
+5. Route through dev→test→review phases
+6. Handle iterations (max 3) if changes requested
+7. Complete successfully or escalate to human
+
+**Resume a paused workflow**:
+```
+/workflow dashboard-bpr
+```
+If the workflow was paused (due to error or max iterations), the orchestrator will detect it and offer to resume.
+
+### Workflow Features
+
+**Multi-Domain Support**:
+- Automatically detects issues with multiple domain labels
+- Splits into separate domain-specific issues
+- Processes each domain sequentially (backend → frontend → devops)
+- Links all split issues together
+
+**Iteration Management**:
+- Reviewer agent can approve or request changes
+- Changes trigger new iteration (developer fixes → test updates → review again)
+- Maximum 3 iterations before human escalation
+- Prevents infinite loops
+
+**Error Handling**:
+- Any agent failure creates a blocker issue
+- Workflow pauses automatically
+- Human resolves blocker, then resumes workflow
+- All context preserved in orchestrator tracking
+
+**State Management**:
+- Orchestrator tracking issue stores workflow state as JSON
+- Tracks current phase, iteration count, handoff chain
+- Enables pause/resume functionality
+- Git-backed persistence (in .beads/issues.jsonl)
+
+### MCP Tools Integration
+
+All agents have access to MCP tools for enhanced capabilities:
+
+**Beads**: Issue tracking and coordination (all agents)
+**Context7**: Best practices documentation (backend, frontend, testing, reviewer)
+**Puppeteer**: UI testing and verification (frontend, testing)
+**Sequential Thinking**: Complex problem breakdown (backend, reviewer)
+**GitHub/Azure**: PR management (devops)
+
+See `.opencode/docs/mcp-tools-reference.md` for complete tool documentation.
+
+### Handoff Templates
+
+Agents create structured handoff issues when passing work:
+
+- **Dev → Test**: Test handoff with implementation details
+- **Test → Review**: Review handoff with test coverage
+- **Review → Dev**: Fix handoff with specific feedback
+- **Any → Human**: Blocker/escalation for human intervention
+
+See `.opencode/docs/handoff-templates.md` for templates and examples.
+
+### Workflow Examples
+
+**Simple Backend Feature**:
+```
+/workflow dashboard-bpr
+
+1. Orchestrator: Single domain (backend) detected
+2. Backend Agent: Implements environment variable config
+3. Test Agent: Writes tests for config loading
+4. Reviewer: Approves (code quality good)
+5. Complete: All issues closed ✓
+
+Duration: ~5 minutes (automated)
+Iterations: 1
+```
+
+**Multi-Domain Feature**:
+```
+/workflow dashboard-jd3
+
+1. Orchestrator: Multi-domain (backend + frontend) detected
+2. Split into:
+   - dashboard-jd3-backend "Backend: Add model unload API"
+   - dashboard-jd3-frontend "Frontend: Add unload button UI"
+3. Process backend: dev → test → review → approve ✓
+4. Process frontend: dev → test → review → approve ✓
+5. Complete: Original issue closed ✓
+
+Duration: ~10 minutes (automated)
+Iterations: 1 per domain
+```
+
+**Feature with Review Iterations**:
+```
+/workflow dashboard-x90
+
+1. Backend Agent: Implements streaming generation
+2. Test Agent: Writes tests
+3. Reviewer: Requests changes (error handling incomplete)
+4. Backend Agent: Fixes error handling (iteration 2)
+5. Test Agent: Updates tests
+6. Reviewer: Approves ✓
+7. Complete: All issues closed ✓
+
+Duration: ~8 minutes (automated)
+Iterations: 2
+```
+
+**Max Iterations Escalation**:
+```
+/workflow dashboard-abc
+
+1-3. Three iterations with changes requested
+4. Iteration 3: Reviewer still requests changes
+5. Orchestrator: Max iterations reached
+6. Creates escalation: "Escalation: dashboard-abc needs human review"
+7. Blocks original issue
+8. Pauses workflow
+9. Human reviews, fixes manually, closes escalation
+10. Can resume if needed or close as complete
+
+Duration: ~15 minutes (automated) + human intervention
+Iterations: 3 (max)
+```
+
+### Best Practices for Workflow
+
+**Do's**:
+- ✓ Use /workflow for any feature or bug fix
+- ✓ Let orchestrator detect multi-domain issues
+- ✓ Trust the review process (iteration limits prevent loops)
+- ✓ Review escalation issues promptly
+- ✓ Let agents document their work in issue comments
+
+**Don'ts**:
+- ✗ Don't manually create dev/test/review issues (orchestrator handles)
+- ✗ Don't bypass the review phase
+- ✗ Don't modify orchestrator tracking issues manually
+- ✗ Don't start new workflow if one already in progress
+
+### Troubleshooting
+
+**Workflow stuck/paused?**
+```bash
+# Check for paused workflows
+bd list --label orchestrator-context --status in_progress
+
+# View workflow details
+bd show <orch-tracking-id> --json
+
+# Check for blockers
+bd list --label blocked,needs-human
+```
+
+**Want to cancel a workflow?**
+```bash
+# Close orchestrator tracking issue
+bd close <orch-tracking-id> --reason "Cancelled by user"
+
+# Close any handoff issues
+bd close <handoff-id> --reason "Workflow cancelled"
+```
+
+**Need to restart from scratch?**
+```bash
+# Close all workflow-related issues
+# Start fresh with /workflow <issue-id>
+```
+
+### Documentation
+
+- **Orchestrator Agent**: `.opencode/command/workflow/workflow.md`
+- **Reviewer Agent**: `.opencode/agent/reviewer.md`
+- **MCP Tools Reference**: `.opencode/docs/mcp-tools-reference.md`
+- **Handoff Templates**: `.opencode/docs/handoff-templates.md`
+- **Slash Command**: `.opencode/command/workflow/workflow.md`
 
 ## Project-Specific Guidelines
 

@@ -90,20 +90,20 @@ app.post('/api/generate', async (req, res) => {
 // Get hardware metrics
 app.get('/api/hardware', async (req, res) => {
   try {
-    const [cpu, mem, graphics, currentLoad, processes, osInfo, diskLayout, networkStats] = await Promise.all([
+    const [cpu, mem, graphics, currentLoad, processes, osInfo, fsSize, networkStats] = await Promise.all([
       si.cpu(),
       si.mem(),
       si.graphics(),
       si.currentLoad(),
       si.processes(),
       si.osInfo(),
-      si.diskLayout(),
+      si.fsSize(),
       si.networkStats()
     ]);
 
-    // Calculate total disk space
-    const totalDiskSpace = diskLayout.reduce((acc, disk) => acc + (disk.size || 0), 0);
-    const totalDiskUsed = diskLayout.reduce((acc, disk) => acc + ((disk.size || 0) - (disk.size || 0) * (100 - (disk.use || 0)) / 100), 0);
+    // Calculate total disk space from filesystem mount points
+    const totalDiskSpace = fsSize.reduce((acc, disk) => acc + (disk.size || 0), 0);
+    const totalDiskUsed = fsSize.reduce((acc, disk) => acc + (disk.used || 0), 0);
 
     res.json({
       cpu: {
