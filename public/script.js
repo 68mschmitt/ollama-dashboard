@@ -7,6 +7,7 @@ const BASE_REFRESH_INTERVAL = 5000;
 
 // Initialize dashboard
 document.addEventListener('DOMContentLoaded', () => {
+    initializeTheme();
     checkHealth();
     loadData();
     loadHardwareMetrics();
@@ -216,10 +217,66 @@ function updateProgressColor(elementId, percentage) {
     }
 }
 
+// Initialize theme from localStorage or system preference
+function initializeTheme() {
+    // Check localStorage first
+    const savedTheme = localStorage.getItem('theme');
+    
+    if (savedTheme) {
+        // Use saved preference
+        setTheme(savedTheme);
+    } else {
+        // Check system preference
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setTheme(prefersDark ? 'dark' : 'light');
+    }
+    
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        // Only auto-switch if user hasn't set a preference
+        if (!localStorage.getItem('theme')) {
+            setTheme(e.matches ? 'dark' : 'light');
+        }
+    });
+}
+
+// Set theme and update UI
+function setTheme(theme) {
+    const html = document.documentElement;
+    const themeIcon = document.querySelector('.theme-icon');
+    
+    if (theme === 'dark') {
+        html.setAttribute('data-theme', 'dark');
+        if (themeIcon) themeIcon.textContent = '☀️';
+    } else {
+        html.removeAttribute('data-theme');
+        if (themeIcon) themeIcon.textContent = '🌙';
+    }
+}
+
+// Toggle theme
+function toggleTheme() {
+    const html = document.documentElement;
+    const currentTheme = html.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    // Save preference
+    localStorage.setItem('theme', newTheme);
+    
+    // Apply theme
+    setTheme(newTheme);
+    
+    // Show feedback
+    showToast(`Switched to ${newTheme} mode`, 'info');
+}
+
 // Setup event listeners
 function setupEventListeners() {
     const generateBtn = document.getElementById('generateBtn');
     generateBtn.addEventListener('click', handleGenerate);
+    
+    const themeToggle = document.getElementById('themeToggle');
+    themeToggle.addEventListener('click', toggleTheme);
 }
 
 // Handle test generation

@@ -316,36 +316,41 @@ Complete: All issues closed ✓
 
 ### Using the /workflow Command
 
-**Show smart suggestions** (what to do next):
+**PRIMARY MODE: Smart Menu** (no arguments - recommended):
 ```
 /workflow
 ```
 
-Shows:
-- Active and paused workflows
+This is the primary way to use the workflow system. It automatically displays an intelligent menu showing:
+- Prioritized recommendations (resume paused work, start high-priority issues, fix blockers)
+- Active workflows in progress
 - Ready issues grouped by domain
 - Blocked issues needing attention
-- Suggested next actions
 
-**Start a specific workflow**:
+**How it works**:
+1. Run `/workflow` with no arguments
+2. System analyzes workspace state automatically
+3. Presents top 3 smart recommendations
+4. You select one option (1-6)
+5. Workflow executes automatically until completion
+
+**SHORTCUT MODE: Direct Workflow** (with issue ID - for power users):
 ```
 /workflow dashboard-bpr
 ```
 
-The orchestrator will:
-1. Check for paused workflows
+Skips the menu and directly starts/resumes workflow for the specified issue. The orchestrator will:
+1. Check if workflow already exists (resume if paused)
 2. Analyze the issue (labels, status, dependencies)
-3. Detect and split multi-domain issues
-4. Present smart detection menu for confirmation
-5. Route through dev→test→review phases
-6. Handle iterations (max 3) if changes requested
-7. Complete successfully or escalate to human
+3. Detect and split multi-domain issues automatically
+4. Route through dev→test→review phases
+5. Handle iterations (max 3) if changes requested
+6. Complete successfully or escalate to human
 
-**Resume a paused workflow**:
-```
-/workflow dashboard-bpr
-```
-If the workflow was paused (due to error or max iterations), the orchestrator will detect it and offer to resume.
+This mode is useful for:
+- CI/CD automation
+- Experienced users who know the issue ID
+- Scripting and batch processing
 
 ### Workflow Features
 
