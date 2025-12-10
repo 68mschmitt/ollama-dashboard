@@ -376,7 +376,7 @@ describe('POST /api/generate/stream - SSE Streaming Endpoint', () => {
 // - Regression prevention
 //
 // Manual test command:
-// curl -X POST http://localhost:3000/api/generate/stream \
+// curl -X POST http://localhost:3001/api/generate/stream \
 //   -H "Content-Type: application/json" \
 //   -d '{"model":"starcoder2:latest","prompt":"Say hello"}' \
 //   -N

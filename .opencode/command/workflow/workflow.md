@@ -9,7 +9,7 @@ You are the Orchestrator Agent, responsible for coordinating automated dev→tes
 **🚨 IMMEDIATE ACTION REQUIRED 🚨**
 
 When this command is invoked, you MUST immediately:
-1. Parse the `$arguments` variable (see Step 1)
+1. Parse the `$ARGUMENTS` variable (see Step 1)
 2. Route to the appropriate path WITHOUT asking any questions
 3. Execute the selected path automatically
 
@@ -57,13 +57,19 @@ Skips menu and directly starts/resumes workflow for the specified issue. Useful 
 
 ## Command Arguments
 
-The `$arguments` variable determines the mode:
+The `$ARGUMENTS` variable is automatically populated based on user input:
+
+When the command is invoked:
+- `/workflow` (no arguments) → `$ARGUMENTS` will be an empty string in the prompt
+- `/workflow dashboard-xyz` (with issue ID) → `$ARGUMENTS` will contain "dashboard-xyz"
 
 ```
-$arguments = ""                    # PRIMARY: Show smart menu
-$arguments = "<issue-id>"          # SHORTCUT: Start/resume workflow
-$arguments = "<invalid>"           # ERROR: Show error, recover to menu
+$ARGUMENTS = ""                    # When invoked without arguments: /workflow
+$ARGUMENTS = "dashboard-xyz"       # When invoked with issue ID: /workflow dashboard-xyz
+$ARGUMENTS = "<invalid-input>"     # When invoked with invalid input (triggers error recovery)
 ```
+
+The routing logic reads `$ARGUMENTS` to determine which path to execute.
 
 ## ⚠️ CRITICAL EXECUTION RULES
 
@@ -73,11 +79,11 @@ $arguments = "<invalid>"           # ERROR: Show error, recover to menu
    - NEVER ask "What would you like me to do?"
    - NEVER ask "Which option do you prefer?"
    - NEVER offer choices before routing
-   - Parse `$arguments` and IMMEDIATELY execute the appropriate path
+   - Parse `$ARGUMENTS` and IMMEDIATELY execute the appropriate path
 
 2. **AUTOMATIC ROUTING - NO EXCEPTIONS**
-   - Empty arguments (`$arguments = ""`) → IMMEDIATELY go to Step 2 (Smart Menu)
-   - Has arguments (`$arguments = "dashboard-xyz"`) → IMMEDIATELY go to Step 7 (Direct Workflow)
+   - Empty arguments (`$ARGUMENTS = ""`) → IMMEDIATELY go to Step 2 (Smart Menu)
+   - Has arguments (`$ARGUMENTS = "dashboard-xyz"`) → IMMEDIATELY go to Step 7 (Direct Workflow)
    - Invalid arguments → Show error, then IMMEDIATELY go to Step 2 (Smart Menu)
 
 3. **AGENT INVOCATION METHOD**
@@ -112,7 +118,7 @@ $arguments = "<invalid>"           # ERROR: Show error, recover to menu
 
 ```javascript
 // NO QUESTIONS. NO CLARIFICATIONS. JUST PARSE AND ROUTE.
-const args = ($arguments || "").trim();
+const args = ($ARGUMENTS || "").trim();
 
 if (args === "") {
   // PRIMARY PATH: Smart Menu (most common)
@@ -135,7 +141,7 @@ if (args === "") {
 
 ### Step 2: Gather Workspace Intelligence (Automatic)
 
-**YOU ARE NOW AT STEP 2 - If `$arguments` was empty, you automatically came here. Execute immediately.**
+**YOU ARE NOW AT STEP 2 - If `$ARGUMENTS` was empty, you automatically came here. Execute immediately.**
 
 **Execute in parallel for speed**:
 

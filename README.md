@@ -66,7 +66,7 @@ npm start
 
 Open your browser and navigate to:
 ```
-http://localhost:3000
+http://localhost:3001
 ```
 
 ## Configuration
@@ -102,7 +102,7 @@ When running the dashboard in Docker, use environment variables to configure the
 
 ```bash
 # Docker run with environment variable
-docker run -p 3000:3000 \
+docker run -p 3001:3001 \
   -e OLLAMA_URL=http://host.docker.internal:11434 \
   ollama-dashboard
 
@@ -111,7 +111,7 @@ services:
   dashboard:
     image: ollama-dashboard
     ports:
-      - "3000:3000"
+      - "3001:3001"
     environment:
       - OLLAMA_URL=http://ollama:11434
   ollama:
@@ -162,7 +162,7 @@ If an invalid URL is provided, the dashboard will:
 
 ### Server Port
 
-By default, the dashboard runs on port 3000. To change this, set the `PORT` environment variable:
+By default, the dashboard runs on port 3001. To change this, set the `PORT` environment variable:
 
 ```bash
 PORT=8080 npm start
@@ -190,7 +190,7 @@ The dashboard backend provides the following REST API endpoints:
 
 **Example: Generate text**
 ```bash
-curl -X POST http://localhost:3000/api/generate \
+curl -X POST http://localhost:3001/api/generate \
   -H "Content-Type: application/json" \
   -d '{
     "model": "llama2",
@@ -260,7 +260,7 @@ curl -X POST http://localhost:3000/api/generate \
 
 ### Cannot Connect to Server
 - Verify Node.js is running and the server is on the correct port
-- Check for port conflicts: `lsof -i :3000` (macOS/Linux)
+- Check for port conflicts: `lsof -i :3001` (macOS/Linux)
 - Try a different port using the `PORT` environment variable
 
 ### No GPU Information Displayed
