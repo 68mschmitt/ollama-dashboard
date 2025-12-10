@@ -3,9 +3,103 @@ const cors = require('cors');
 const axios = require('axios');
 const path = require('path');
 const si = require('systeminformation');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+/**
+ * Instance storage configuration
+ * Instances are persisted to a JSON file for durability across server restarts
+ */
+const INSTANCES_FILE = path.join(__dirname, '.instances.json');
+
+/**
+ * In-memory instance store with file persistence
+ * Structure: { [id]: { id, name, url, description, created_at, updated_at } }
+ */
+let instances = {};
+
+/**
+ * Load instances from persistent storage
+ */
+function loadInstances() {
+  try {
+    if (fs.existsSync(INSTANCES_FILE)) {
+      const data = fs.readFileSync(INSTANCES_FILE, 'utf8');
+      instances = JSON.parse(data);
+      console.log(`Loaded ${Object.keys(instances).length} instances from storage`);
+    }
+  } catch (error) {
+    console.error('Error loading instances:', error.message);
+    instances = {};
+  }
+}
+
+/**
+ * Save instances to persistent storage
+ */
+function saveInstances() {
+  try {
+    fs.writeFileSync(INSTANCES_FILE, JSON.stringify(instances, null, 2), 'utf8');
+  } catch (error) {
+    console.error('Error saving instances:', error.message);
+  }
+}
+
+/**
+ * Generate unique instance ID
+ */
+function generateId() {
+  return `inst_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Validate instance URL format
+ */
+function validateInstanceUrl(url) {
+  try {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+      return { valid: false, error: 'Only http and https protocols are supported' };
+    }
+    return { valid: true };
+  } catch (error) {
+    return { valid: false, error: 'Invalid URL format' };
+  }
+}
+
+/**
+ * Validate instance data
+ */
+function validateInstanceData(data) {
+  const errors = [];
+  
+  if (!data.name || typeof data.name !== 'string' || data.name.trim() === '') {
+    errors.push('Name is required and must be a non-empty string');
+  }
+  
+  if (!data.url || typeof data.url !== 'string' || data.url.trim() === '') {
+    errors.push('URL is required and must be a non-empty string');
+  } else {
+    const urlValidation = validateInstanceUrl(data.url);
+    if (!urlValidation.valid) {
+      errors.push(`URL validation failed: ${urlValidation.error}`);
+    }
+  }
+  
+  if (data.description && typeof data.description !== 'string') {
+    errors.push('Description must be a string');
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
+// Load instances on startup
+loadInstances();
 
 /**
  * Ollama API base URL configuration
@@ -36,6 +130,251 @@ if (process.env.OLLAMA_URL) {
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+
+// ============================================================================
+// Instance Management Endpoints
+// ============================================================================
+
+/**
+ * POST /api/instances
+ * Create a new Ollama instance connection
+ * 
+ * Request body:
+ * {
+ *   "name": "string (required)",
+ *   "url": "string (required, valid http/https URL)",
+ *   "description": "string (optional)"
+ * }
+ * 
+ * Response: 201 Created
+ * {
+ *   "id": "inst_...",
+ *   "name": "...",
+ *   "url": "...",
+ *   "description": "...",
+ *   "created_at": "ISO8601",
+ *   "updated_at": "ISO8601"
+ * }
+ */
+app.post('/api/instances', (req, res) => {
+  try {
+    const { name, url, description } = req.body;
+    
+    // Validate input
+    const validation = validateInstanceData({ name, url, description });
+    if (!validation.valid) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: validation.errors
+      });
+    }
+    
+    // Create new instance
+    const id = generateId();
+    const now = new Date().toISOString();
+    const instance = {
+      id,
+      name: name.trim(),
+      url: url.trim(),
+      description: description ? description.trim() : '',
+      created_at: now,
+      updated_at: now
+    };
+    
+    instances[id] = instance;
+    saveInstances();
+    
+    res.status(201).json(instance);
+  } catch (error) {
+    console.error('Error creating instance:', error);
+    res.status(500).json({
+      error: 'Failed to create instance',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/instances
+ * List all configured Ollama instances
+ * 
+ * Response: 200 OK
+ * {
+ *   "instances": [
+ *     { "id": "...", "name": "...", "url": "...", ... },
+ *     ...
+ *   ],
+ *   "count": number
+ * }
+ */
+app.get('/api/instances', (req, res) => {
+  try {
+    const instanceList = Object.values(instances);
+    res.json({
+      instances: instanceList,
+      count: instanceList.length
+    });
+  } catch (error) {
+    console.error('Error listing instances:', error);
+    res.status(500).json({
+      error: 'Failed to list instances',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/instances/:id
+ * Get details of a specific instance
+ * 
+ * Response: 200 OK
+ * {
+ *   "id": "inst_...",
+ *   "name": "...",
+ *   "url": "...",
+ *   "description": "...",
+ *   "created_at": "ISO8601",
+ *   "updated_at": "ISO8601"
+ * }
+ */
+app.get('/api/instances/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!instances[id]) {
+      return res.status(404).json({
+        error: 'Instance not found',
+        message: `No instance with ID '${id}' found`
+      });
+    }
+    
+    res.json(instances[id]);
+  } catch (error) {
+    console.error('Error getting instance:', error);
+    res.status(500).json({
+      error: 'Failed to get instance',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * PUT /api/instances/:id
+ * Update an existing instance
+ * 
+ * Request body (all fields optional):
+ * {
+ *   "name": "string",
+ *   "url": "string (valid http/https URL)",
+ *   "description": "string"
+ * }
+ * 
+ * Response: 200 OK
+ * {
+ *   "id": "inst_...",
+ *   "name": "...",
+ *   "url": "...",
+ *   "description": "...",
+ *   "created_at": "ISO8601",
+ *   "updated_at": "ISO8601"
+ * }
+ */
+app.put('/api/instances/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, url, description } = req.body;
+    
+    if (!instances[id]) {
+      return res.status(404).json({
+        error: 'Instance not found',
+        message: `No instance with ID '${id}' found`
+      });
+    }
+    
+    // Validate provided fields
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (url !== undefined) updateData.url = url;
+    if (description !== undefined) updateData.description = description;
+    
+    // If any fields provided, validate them
+    if (Object.keys(updateData).length > 0) {
+      const validation = validateInstanceData({
+        name: updateData.name !== undefined ? updateData.name : instances[id].name,
+        url: updateData.url !== undefined ? updateData.url : instances[id].url,
+        description: updateData.description !== undefined ? updateData.description : instances[id].description
+      });
+      
+      if (!validation.valid) {
+        return res.status(400).json({
+          error: 'Validation failed',
+          details: validation.errors
+        });
+      }
+    }
+    
+    // Update instance
+    const now = new Date().toISOString();
+    if (name !== undefined) instances[id].name = name.trim();
+    if (url !== undefined) instances[id].url = url.trim();
+    if (description !== undefined) instances[id].description = description.trim();
+    instances[id].updated_at = now;
+    
+    saveInstances();
+    
+    res.json(instances[id]);
+  } catch (error) {
+    console.error('Error updating instance:', error);
+    res.status(500).json({
+      error: 'Failed to update instance',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/instances/:id
+ * Delete an instance
+ * 
+ * Response: 200 OK
+ * {
+ *   "status": "success",
+ *   "message": "Instance deleted successfully",
+ *   "id": "inst_..."
+ * }
+ */
+app.delete('/api/instances/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!instances[id]) {
+      return res.status(404).json({
+        error: 'Instance not found',
+        message: `No instance with ID '${id}' found`
+      });
+    }
+    
+    const deletedInstance = instances[id];
+    delete instances[id];
+    saveInstances();
+    
+    res.json({
+      status: 'success',
+      message: 'Instance deleted successfully',
+      id: deletedInstance.id
+    });
+  } catch (error) {
+    console.error('Error deleting instance:', error);
+    res.status(500).json({
+      error: 'Failed to delete instance',
+      message: error.message
+    });
+  }
+});
+
+// ============================================================================
+// Model Management Endpoints
+// ============================================================================
 
 // Get list of running models
 app.get('/api/models/running', async (req, res) => {
