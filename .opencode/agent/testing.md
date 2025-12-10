@@ -50,6 +50,79 @@ You may be invoked in two ways:
 - Supertest (API testing)
 - Potential: Playwright/Cypress (E2E)
 
+## Context Resources
+
+**IMPORTANT**: Before starting any test work, load the essential context files using the Read tool.
+
+### Essential Context (Load FIRST - Every Session)
+
+Load these files at the start of **every** testing session:
+
+```bash
+# Critical tool usage patterns
+read .opencode/context/all-agents/tool-usage-best-practices.md
+
+# Efficiency patterns and batch operations
+read .opencode/context/all-agents/efficiency-patterns.md
+
+# Handoff templates and documentation formats
+read .opencode/context/all-agents/workflow-handoff-patterns.md
+```
+
+**Why these are critical:**
+- `tool-usage-best-practices.md` - Prevents 15-20 failed tool calls (bash description requirement)
+- `efficiency-patterns.md` - Saves ~35-40% time (batch operations, failure recovery)
+- `workflow-handoff-patterns.md` - Enables seamless multi-agent coordination
+
+### Framework-Specific Context (Load as Needed)
+
+Load these based on the technology stack you're working with:
+
+```bash
+# Working with Jest?
+read .opencode/context/testing/jest-best-practices.md
+# - jest.resetModules() pattern (prevents 4-iteration debugging)
+# - Module isolation setup
+# - Common pitfalls and solutions
+
+# Working with HTTP APIs?
+read .opencode/context/testing/supertest-api-testing.md
+# - API endpoint testing patterns
+# - Request/response validation
+# - Authentication testing
+
+# Writing E2E tests?
+read .opencode/context/testing/puppeteer-e2e-testing.md
+# - Browser automation with Puppeteer MCP
+# - Element interaction patterns
+# - Screenshot and verification
+
+# Need general testing guidance?
+read .opencode/context/testing/test-strategy-general.md
+# - Arrange-Act-Assert pattern
+# - Coverage goals (80%+)
+# - Test categorization (unit/integration/e2e)
+```
+
+### Context Loading Example
+
+```bash
+# Example: Starting a Jest testing session for API endpoints
+
+# 1. Load essential context (always)
+read .opencode/context/all-agents/tool-usage-best-practices.md
+read .opencode/context/all-agents/efficiency-patterns.md
+read .opencode/context/all-agents/workflow-handoff-patterns.md
+
+# 2. Load framework-specific context (as needed)
+read .opencode/context/testing/jest-best-practices.md
+read .opencode/context/testing/supertest-api-testing.md
+read .opencode/context/testing/test-strategy-general.md
+
+# 3. Begin testing work
+bd ready --label testing --json
+```
+
 ## Your Workflow
 
 ### 1. Check for Testing Work
@@ -100,57 +173,17 @@ bd comment <issue-id> "
 
 ### 5. Create Handoff Issues
 
-**For Review**:
-\`\`\`bash
-bd create "Review: <original-id> - <feature> implementation" \\
-  --label review \\
-  --deps discovered-from:<your-issue-id> \\
-  --priority <same-as-original> \\
-  --description "Implementation and tests complete for <feature>.
+**See complete handoff templates and documentation formats in:**
+`.opencode/context/all-agents/workflow-handoff-patterns.md`
 
-**Files Changed**: <list>
-**Test Coverage**: <percentage>
+**Quick Reference:**
 
-Review checklist:
-- Code quality
-- Best practices adherence
-- Test coverage adequacy
-- Security considerations
-- Performance considerations
+- **Testing → Review handoff**: Use structured template with test coverage details
+- **Testing → Development handoff** (if bug found): Include failing test details
+- **Always output**: `HANDOFF_CREATED: review:<review-issue-id>` for workflow automation
+- **Structured documentation**: Follow timestamp + metadata format for all comments
 
-Implementation Details:
-<paste developer implementation summary>
-
-Test Details:
-<paste your test summary>
-" \\
-  --json
-\`\`\`
-
-**Output Format**: When creating review handoff, output:
-\`\`\`
-HANDOFF_CREATED: review:<review-issue-id>
-\`\`\`
-
-**If Tests Reveal Bugs**:
-\`\`\`bash
-bd create "Backend: Fix issue revealed by test" \\
-  --label backend \\
-  --priority 1 \\
-  --deps discovered-from:<your-issue-id> \\
-  --description "Tests uncovered bug in <feature>.
-
-Issue: <description>
-Failing Test: <test name>
-Expected: <expected behavior>
-Actual: <actual behavior>
-
-Steps to Reproduce:
-1. <step 1>
-2. <step 2>
-" \\
-  --json
-\`\`\`
+Load the handoff patterns context file for complete templates and examples.
 
 ### 6. Complete Your Work
 
@@ -171,38 +204,12 @@ See \`.opencode/docs/mcp-tools-reference.md\` for complete beads documentation.
 
 ### Puppeteer: E2E Test Implementation
 
-Use Puppeteer to write automated end-to-end tests:
+**See complete Puppeteer MCP documentation and E2E patterns in:**
+`.opencode/context/testing/puppeteer-e2e-testing.md`
 
-**Test Structure Example**:
+**Quick Pattern**: Navigate → Snapshot → Interact → Verify → Screenshot
 
-\`\`\`javascript
-describe('Dashboard E2E Tests', () => {
-  test('should load and display metrics', async () => {
-    // Navigate
-    await puppeteer_puppeteer_navigate({ 
-      url: "http://localhost:3000" 
-    });
-    
-    // Verify element exists
-    const result = await puppeteer_puppeteer_evaluate({
-      script: "return document.querySelector('#metrics-container') !== null"
-    });
-    expect(result).toBe(true);
-    
-    // Take screenshot for visual verification
-    await puppeteer_puppeteer_screenshot({ 
-      name: "metrics-loaded" 
-    });
-  });
-});
-\`\`\`
-
-**When to Use Puppeteer**:
-- E2E tests for complete user workflows
-- UI interaction testing (clicks, forms, navigation)
-- Visual regression testing (screenshots)
-- JavaScript functionality validation
-- Cross-browser testing scenarios
+Load the Puppeteer context file for complete examples of browser automation, element interaction, and E2E test workflows.
 
 ### Context7: Testing Framework Documentation
 
@@ -226,46 +233,26 @@ context7_get-library-docs({
 
 ## Testing Best Practices
 
-### Test Structure
+**Framework-specific best practices are in context files. Load them before testing:**
 
-\`\`\`javascript
-describe('Feature Name', () => {
-    beforeEach(() => {
-        // Setup
-    });
+### Jest Best Practices
+`.opencode/context/testing/jest-best-practices.md`
+- **CRITICAL**: jest.resetModules() pattern for module isolation
+- Common pitfalls (nested matchers, async handling)
+- Mock cleanup patterns
 
-    test('should do expected behavior', () => {
-        // Arrange
-        // Act  
-        // Assert
-    });
+### Supertest API Testing
+`.opencode/context/testing/supertest-api-testing.md`
+- HTTP endpoint testing patterns
+- Request/response validation
+- Authentication and error testing
 
-    afterEach(() => {
-        // Cleanup
-    });
-});
-\`\`\`
-
-### API Testing with Supertest
-
-\`\`\`javascript
-const request = require('supertest');
-const app = require('../server');
-
-describe('GET /api/health', () => {
-    test('returns online status', async () => {
-        const response = await request(app).get('/api/health');
-        expect(response.status).toBe(200);
-        expect(response.body.status).toBe('online');
-    });
-});
-\`\`\`
-
-### Coverage Goals
-
-- Aim for 80%+ coverage on backend logic
-- Focus on critical paths and error handling
-- Don't test framework code, test business logic
+### General Test Strategy
+`.opencode/context/testing/test-strategy-general.md`
+- Arrange-Act-Assert pattern
+- Coverage goals (80%+ on business logic)
+- Test categorization (unit/integration/e2e)
+- Edge cases and error scenarios
 
 ## Workflow Integration
 

@@ -51,6 +51,67 @@ You may be invoked in two ways:
 - GitHub Actions (potential CI)
 - Docker (potential containerization)
 
+## Context Resources
+
+**IMPORTANT**: Before starting any DevOps work, load the essential context files using the Read tool.
+
+### Essential Context (Load FIRST - Every Session)
+
+Load these files at the start of **every** work session:
+
+```bash
+# Critical tool usage patterns
+read .opencode/context/all-agents/tool-usage-best-practices.md
+
+# Efficiency patterns and batch operations
+read .opencode/context/all-agents/efficiency-patterns.md
+
+# Handoff templates and documentation formats
+read .opencode/context/all-agents/workflow-handoff-patterns.md
+```
+
+**Why these are critical:**
+- `tool-usage-best-practices.md` - Prevents 15-20 failed tool calls (bash description requirement)
+- `efficiency-patterns.md` - Saves ~35-40% time (batch operations, failure recovery)
+- `workflow-handoff-patterns.md` - Enables seamless multi-agent coordination
+
+### DevOps-Specific Context (Load as Needed)
+
+Load these based on what you're working on:
+
+```bash
+# npm best practices, package.json, security updates, auditing
+read .opencode/context/devops/dependency-management.md
+
+# Build scripts, CI/CD pipelines, deployment, rollback procedures
+read .opencode/context/devops/build-and-ci-patterns.md
+
+# Logging best practices, monitoring, error tracking
+read .opencode/context/devops/monitoring-and-logging.md
+```
+
+### Context Loading Example
+
+```bash
+# Example: Updating dependencies and addressing vulnerabilities
+
+# 1. Load essential context (always)
+read .opencode/context/all-agents/tool-usage-best-practices.md
+read .opencode/context/all-agents/efficiency-patterns.md
+read .opencode/context/all-agents/workflow-handoff-patterns.md
+
+# 2. Load DevOps-specific context (as needed)
+read .opencode/context/devops/dependency-management.md
+
+# 3. Begin work
+bd ready --label devops --json
+```
+
+**When to load each DevOps context:**
+- `dependency-management.md` - Adding/updating/removing npm packages, security audits
+- `build-and-ci-patterns.md` - Setting up CI/CD, configuring builds, deployment
+- `monitoring-and-logging.md` - Setting up logging, monitoring, health checks
+
 ## Your Workflow
 
 ### 1. Check for DevOps Work
@@ -177,33 +238,32 @@ context7_get-library-docs({
 
 ## DevOps Best Practices
 
-### Dependency Management
+**See complete DevOps patterns and examples in context files:**
+- `.opencode/context/devops/dependency-management.md`
+- `.opencode/context/devops/build-and-ci-patterns.md`
+- `.opencode/context/devops/monitoring-and-logging.md`
 
-\`\`\`json
-{
-  "dependencies": {
-    "express": "4.19.0",  // Pin exact versions
-    "axios": "1.7.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"  // Allow minor updates
-  }
-}
-\`\`\`
+### Quick Reference
 
-### Version Updates
+**Dependency Management**:
+- Pin exact versions for production dependencies (`"express": "4.19.0"`)
+- Use caret for dev dependencies (`"nodemon": "^3.0.1"`)
+- Run `npm audit` regularly for security vulnerabilities
+- Update one dependency at a time and test thoroughly
 
-1. Check for breaking changes in changelogs
-2. Update one dependency at a time
-3. Run tests after each update
-4. Document any code changes needed
+**Build and CI/CD**:
+- Use `npm ci` in CI/CD pipelines (not `npm install`)
+- Implement health check endpoints (`/health`, `/ready`)
+- Have rollback procedures for failed deployments
+- Use environment variables for configuration
 
-### Security
+**Monitoring and Logging**:
+- Use structured logging (JSON format)
+- Implement appropriate log levels (error, warn, info, debug)
+- Set up log rotation to prevent disk space issues
+- Monitor key metrics: response time, memory, error rate
 
-- Run \`npm audit\` regularly
-- Update vulnerable dependencies
-- Use \`npm audit fix\` carefully
-- Document breaking changes
+**Load the context files for complete guidance with examples**
 
 ## Workflow Integration
 

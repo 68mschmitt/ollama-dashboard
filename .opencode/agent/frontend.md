@@ -51,6 +51,72 @@ You may be invoked in two ways:
 - CSS3 with gradients and animations
 - No frameworks (by project design)
 
+## Context Resources
+
+**IMPORTANT**: Before starting any frontend work, load the essential context files using the Read tool.
+
+### Essential Context (Load FIRST - Every Session)
+
+Load these files at the start of **every** work session:
+
+```bash
+# Critical tool usage patterns
+read .opencode/context/all-agents/tool-usage-best-practices.md
+
+# Efficiency patterns and batch operations
+read .opencode/context/all-agents/efficiency-patterns.md
+
+# Handoff templates and documentation formats
+read .opencode/context/all-agents/workflow-handoff-patterns.md
+```
+
+**Why these are critical:**
+- `tool-usage-best-practices.md` - Prevents 15-20 failed tool calls (bash description requirement)
+- `efficiency-patterns.md` - Saves ~35-40% time (batch operations, failure recovery)
+- `workflow-handoff-patterns.md` - Enables seamless multi-agent coordination
+
+### Frontend-Specific Context (Load as Needed)
+
+Load these based on what you're working on:
+
+```bash
+# Vanilla JavaScript patterns - ES6+, DOM manipulation, fetch API, event handling
+read .opencode/context/frontend/vanilla-js-patterns.md
+
+# Responsive design patterns - Mobile-first, media queries, flexbox, CSS grid
+read .opencode/context/frontend/responsive-design-patterns.md
+
+# UI component patterns - Component structure, loading states, modals, forms
+read .opencode/context/frontend/ui-component-patterns.md
+
+# Accessibility guidelines - Semantic HTML, ARIA, keyboard navigation, screen readers
+read .opencode/context/frontend/accessibility-guidelines.md
+```
+
+### Context Loading Example
+
+```bash
+# Example: Starting a new UI feature implementation
+
+# 1. Load essential context (always)
+read .opencode/context/all-agents/tool-usage-best-practices.md
+read .opencode/context/all-agents/efficiency-patterns.md
+read .opencode/context/all-agents/workflow-handoff-patterns.md
+
+# 2. Load frontend-specific context (as needed)
+read .opencode/context/frontend/vanilla-js-patterns.md
+read .opencode/context/frontend/responsive-design-patterns.md
+
+# 3. Begin work
+bd ready --label frontend --json
+```
+
+**When to load each frontend context:**
+- `vanilla-js-patterns.md` - Any JavaScript work (fetch, events, DOM manipulation, async)
+- `responsive-design-patterns.md` - CSS, layouts, media queries, mobile-first design
+- `ui-component-patterns.md` - Building reusable components, modals, toasts, forms
+- `accessibility-guidelines.md` - Keyboard navigation, ARIA, semantic HTML, screen readers
+
 ## Your Workflow
 
 ### 1. Check for Frontend Work
@@ -246,61 +312,18 @@ context7_get-library-docs({
 
 ## Frontend Best Practices
 
-### Code Organization
+**See complete frontend patterns and examples in context files:**
 
-```javascript
-// Global state at top
-const API_URL = 'http://localhost:3000/api';
-let globalState = {};
+### Quick Reference
 
-// Event listeners setup
-document.addEventListener('DOMContentLoaded', () => {
-    initializeApp();
-});
+- **JavaScript Patterns**: ES6+ features, async/await, DOM manipulation, event delegation (see `vanilla-js-patterns.md`)
+- **Responsive Design**: Mobile-first approach, breakpoints at 768px (tablet) and 1024px (desktop) (see `responsive-design-patterns.md`)
+- **UI Components**: Loading states, error displays, modals, toasts, forms (see `ui-component-patterns.md`)
+- **Accessibility**: Semantic HTML, ARIA attributes, keyboard navigation, contrast ratios (see `accessibility-guidelines.md`)
+- **Error Handling**: Always use try/catch with fetch, show user-friendly error messages
+- **LocalStorage**: JSON.stringify on save, JSON.parse on load with fallback defaults
 
-// Functions organized by feature
-function featureFunction() {
-    // Implementation
-}
-```
-
-### Error Handling
-
-```javascript
-try {
-    const response = await fetch(`${API_URL}/endpoint`);
-    if (!response.ok) throw new Error('Request failed');
-    const data = await response.json();
-    updateUI(data);
-} catch (error) {
-    console.error('Error:', error);
-    showErrorToUser('Failed to load data');
-}
-```
-
-### DOM Manipulation
-
-- Use `getElementById()` for single elements
-- Cache DOM references when used multiple times
-- Use template literals for HTML generation
-- Always sanitize user input before rendering
-
-### Responsive Design
-
-- Test on mobile breakpoint (max-width: 768px)
-- Use flexbox/grid for layouts
-- Touch-friendly button sizes (min 44x44px)
-- Readable font sizes on mobile
-
-### LocalStorage Patterns
-
-```javascript
-// Save
-localStorage.setItem('key', JSON.stringify(data));
-
-// Load with fallback
-const data = JSON.parse(localStorage.getItem('key') || '{}');
-```
+**Load the context files for complete guidance with examples**
 
 ## Files in Your Scope
 

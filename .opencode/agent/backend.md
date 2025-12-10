@@ -51,6 +51,72 @@ You may be invoked in two ways:
 - axios (for Ollama API calls)
 - systeminformation (hardware metrics)
 
+## Context Resources
+
+**IMPORTANT**: Before starting any backend work, load the essential context files using the Read tool.
+
+### Essential Context (Load FIRST - Every Session)
+
+Load these files at the start of **every** work session:
+
+```bash
+# Critical tool usage patterns
+read .opencode/context/all-agents/tool-usage-best-practices.md
+
+# Efficiency patterns and batch operations  
+read .opencode/context/all-agents/efficiency-patterns.md
+
+# Handoff templates and documentation formats
+read .opencode/context/all-agents/workflow-handoff-patterns.md
+```
+
+**Why these are critical:**
+- `tool-usage-best-practices.md` - Prevents 15-20 failed tool calls (bash description requirement)
+- `efficiency-patterns.md` - Saves ~35-40% time (batch operations, failure recovery)
+- `workflow-handoff-patterns.md` - Enables seamless multi-agent coordination
+
+### Backend-Specific Context (Load as Needed)
+
+Load these based on what you're working on:
+
+```bash
+# Express.js patterns - Routes, middleware, error handling
+read .opencode/context/backend/express-best-practices.md
+
+# Node.js patterns - Async/await, promises, streams, modules
+read .opencode/context/backend/nodejs-patterns.md
+
+# REST API design - HTTP methods, status codes, request/response formats
+read .opencode/context/backend/api-design-patterns.md
+
+# Environment configuration - Config management, env vars, secrets
+read .opencode/context/backend/environment-configuration.md
+```
+
+### Context Loading Example
+
+```bash
+# Example: Starting a new API endpoint implementation
+
+# 1. Load essential context (always)
+read .opencode/context/all-agents/tool-usage-best-practices.md
+read .opencode/context/all-agents/efficiency-patterns.md
+read .opencode/context/all-agents/workflow-handoff-patterns.md
+
+# 2. Load backend-specific context (as needed)
+read .opencode/context/backend/express-best-practices.md
+read .opencode/context/backend/api-design-patterns.md
+
+# 3. Begin work
+bd ready --label backend --json
+```
+
+**When to load each backend context:**
+- `express-best-practices.md` - Any Express route/middleware work
+- `nodejs-patterns.md` - Async operations, file handling, HTTP clients
+- `api-design-patterns.md` - New API endpoints, REST design decisions
+- `environment-configuration.md` - Adding config options, environment setup
+
 ## Your Workflow
 
 ### 1. Check for Backend Work
@@ -244,48 +310,17 @@ Use this for:
 
 ## Backend Best Practices
 
-### Error Handling
+**See complete backend patterns and examples in context files:**
 
-```javascript
-app.get('/api/endpoint', async (req, res) => {
-  try {
-    // Implementation
-    res.json({ data });
-  } catch (error) {
-    res.status(500).json({ 
-      error: 'User-friendly message',
-      message: error.message 
-    });
-  }
-});
-```
+### Quick Reference
 
-### Input Validation
+- **Error Handling**: Always use try/catch with async/await (see `express-best-practices.md`)
+- **Input Validation**: Validate and sanitize all inputs, return 400 for invalid data (see `api-design-patterns.md`)
+- **HTTP Status Codes**: 200 (success), 201 (created), 400 (bad request), 404 (not found), 500 (error), 503 (service down)
+- **Environment Variables**: Use process.env with defaults (see `environment-configuration.md`)
+- **Async Patterns**: Use Promise.all() for parallel ops, proper error handling (see `nodejs-patterns.md`)
 
-- Validate all request parameters
-- Sanitize inputs to prevent injection
-- Return 400 Bad Request for invalid inputs
-
-### HTTP Status Codes
-
-- 200: Success
-- 400: Bad Request (invalid input)
-- 404: Not Found
-- 500: Internal Server Error
-- 503: Service Unavailable (Ollama offline)
-
-### Environment Variables
-
-```javascript
-const OLLAMA_API = process.env.OLLAMA_URL || 'http://localhost:11434';
-const PORT = process.env.PORT || 3000;
-```
-
-### Async/Await Patterns
-
-- Always use try/catch with async functions
-- Use Promise.all() for parallel operations
-- Handle promise rejections explicitly
+**Load the context files for complete guidance with examples**
 
 ## Files in Your Scope
 
